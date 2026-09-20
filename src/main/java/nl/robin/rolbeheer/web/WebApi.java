@@ -9,13 +9,17 @@ import nl.robin.rolbeheer.role.PermState;
 import nl.robin.rolbeheer.role.Role;
 import nl.robin.rolbeheer.role.RoleManager;
 import nl.robin.rolbeheer.scan.PluginScanner.PermEntry;
+import nl.robin.rolbeheer.server.PlayerAdmin;
+import nl.robin.rolbeheer.server.ServerSettings;
 import nl.robin.rolbeheer.scan.PluginScanner.PluginGroup;
 import nl.robin.rolbeheer.util.Text;
 import org.bukkit.Bukkit;
 import org.bukkit.OfflinePlayer;
+import org.bukkit.World;
 import org.bukkit.entity.Player;
 
 import java.util.Locale;
+import java.util.Map;
 import java.util.UUID;
 import java.util.regex.Pattern;
 
@@ -25,9 +29,13 @@ public final class WebApi {
     private static final Pattern VALID_NODE = Pattern.compile("-?[a-z0-9_.*-]+");
 
     private final RolBeheer plugin;
+    private final ServerSettings settings;
+    private final PlayerAdmin players;
 
     public WebApi(RolBeheer plugin) {
         this.plugin = plugin;
+        this.settings = new ServerSettings(plugin);
+        this.players = new PlayerAdmin(plugin);
     }
 
     public JsonElement handle(String method, String route, JsonObject req) {
@@ -35,6 +43,7 @@ public final class WebApi {
             return switch (route) {
                 case "state" -> state();
                 case "plugins" -> plugins();
+                case "server" -> server(null);
                 default -> throw new ApiException("Onbekende actie.");
             };
         }
@@ -57,6 +66,38 @@ public final class WebApi {
             case "role/perm" -> setPerm(req);
             case "role/perms" -> setPerms(req);
             case "player/role" -> playerRole(req);
+            case "server/property" -> {
+                String key = str(req, "key");
+                ServerSettings.Setting setting = ServerSettings.setting(key);
+                String value = ServerSettings.check(setting, str(req, "value"));
+                settings.writeProperty(key, value);
+                settings.applyLive(key, value);
+                log("serverinstelling " + key + " = " + value);
+                return server(null);
+            }
+            case "server/world" -> {
+                return server(settings.world(str(req, "world")).getName());
+            }
+            case "server/gamerule" -> {
+                World world = settings.world(str(req, "world"));
+                settings.setRule(world, str(req, "key"), str(req, "value"));
+                log("gameregel " + str(req, "key") + " = " + str(req, "value") + " in " + world.getName());
+                return server(world.getName());
+            }
+            case "server/whitelist" -> {
+                String msg = players.setWhitelist(req.has("on") && req.get("on").getAsBoolean());
+                log(msg);
+                JsonObject o = server(null);
+                o.addProperty("message", msg);
+                return o;
+            }
+            case "server/player" -> {
+                String msg = players.apply(str(req, "action"), str(req, "player"), str(req, "reason"));
+                log(msg);
+                JsonObject o = server(null);
+                o.addProperty("message", msg);
+                return o;
+            }
             default -> throw new ApiException("Onbekende actie.");
         }
         plugin.commit();
@@ -128,6 +169,69 @@ public final class WebApi {
         JsonObject o = new JsonObject();
         o.add("groups", groups);
         return o;
+    }
+
+    private JsonObject server(String worldName) {
+        JsonObject o = new JsonObject();
+
+        Map<String, String> current = settings.readProperties();
+        JsonArray props = new JsonArray();
+        for (ServerSettings.Setting s : ServerSettings.settings()) {
+            JsonObject j = new JsonObject();
+            j.addProperty("key", s.key());
+            j.addProperty("label", s.label());
+            j.addProperty("description", s.description());
+            j.addProperty("type", s.type().name());
+            j.addProperty("value", current.getOrDefault(s.key(), ""));
+            j.addProperty("restart", s.restart());
+            j.addProperty("min", s.min());
+            j.addProperty("max", s.max());
+            JsonArray options = new JsonArray();
+            s.options().forEach(options::add);
+            j.add("options", options);
+            props.add(j);
+        }
+        o.add("properties", props);
+
+        World world = settings.world(worldName);
+        o.addProperty("world", world.getName());
+        JsonArray worlds = new JsonArray();
+        Bukkit.getWorlds().forEach(w -> worlds.add(w.getName()));
+        o.add("worlds", worlds);
+
+        JsonArray rules = new JsonArray();
+        for (ServerSettings.RuleInfo r : settings.rules(world)) {
+            JsonObject j = new JsonObject();
+            j.addProperty("key", r.key());
+            j.addProperty("label", r.label());
+            j.addProperty("description", r.description());
+            j.addProperty("bool", r.bool());
+            j.addProperty("value", r.value());
+            rules.add(j);
+        }
+        o.add("gamerules", rules);
+
+        JsonObject access = new JsonObject();
+        access.addProperty("whitelistEnabled", players.whitelistEnabled());
+        access.add("whitelist", entries(players.whitelist()));
+        access.add("ops", entries(players.ops()));
+        access.add("bans", entries(players.bans()));
+        JsonArray online = new JsonArray();
+        for (Player p : Bukkit.getOnlinePlayers()) online.add(p.getName());
+        access.add("online", online);
+        o.add("access", access);
+        return o;
+    }
+
+    private static JsonArray entries(java.util.List<PlayerAdmin.Entry> list) {
+        JsonArray array = new JsonArray();
+        for (PlayerAdmin.Entry e : list) {
+            JsonObject j = new JsonObject();
+            j.addProperty("name", e.name());
+            j.addProperty("detail", e.detail());
+            array.add(j);
+        }
+        return array;
     }
 
     // ---------------------------------------------------------------- schrijven

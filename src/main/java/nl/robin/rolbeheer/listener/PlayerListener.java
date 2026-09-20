@@ -44,7 +44,8 @@ public final class PlayerListener implements Listener {
         if (d == null) return;
         String format = plugin.chatFormat();
         event.renderer((source, displayName, message, viewer) -> {
-            Component name = d.color() == null ? displayName : displayName.colorIfAbsent(d.color());
+            // Heeft de rol een naamkleur, dan wint die van kleuren van andere plugins.
+            Component name = d.color() == null ? displayName : Component.text(source.getName(), d.color());
             return Text.mm(format,
                     Placeholder.component("prefix", d.prefix()),
                     Placeholder.component("naam", name),

@@ -31,7 +31,12 @@ body {
   color: var(--text);
   font: 15px/1.5 var(--ui);
 }
-button, input { font: inherit; color: inherit; }
+button, input, select { font: inherit; color: inherit; }
+input[type="checkbox"] { accent-color: var(--gold); width: 1.05rem; height: 1.05rem; }
+select.input { appearance: none; background-image: linear-gradient(45deg, transparent 50%, var(--muted) 50%),
+  linear-gradient(135deg, var(--muted) 50%, transparent 50%);
+  background-position: calc(100% - 1.1rem) 55%, calc(100% - .75rem) 55%;
+  background-size: .35rem .35rem, .35rem .35rem; background-repeat: no-repeat; padding-right: 2rem; }
 button { cursor: pointer; }
 :focus-visible { outline: 2px solid var(--gold); outline-offset: 2px; }
 .sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); }
@@ -169,6 +174,42 @@ main { padding: 1.5rem 2rem 3rem; min-width: 0; }
 .dot { display: inline-block; width: .55rem; height: .55rem; border-radius: 50%; background: var(--line); margin-right: .5rem; }
 .dot.on { background: var(--allow); }
 
+/* ---------- serverweergave ---------- */
+.viewnav { display: flex; gap: .25rem; }
+.viewnav button {
+  background: none; border: 1px solid transparent; border-radius: var(--radius-s);
+  padding: .35rem .8rem; color: var(--muted); font-weight: 500;
+}
+.viewnav button[aria-current="true"] { background: var(--panel-2); border-color: var(--line); color: var(--text); }
+.layout.server .sidebar { display: none; }
+.layout.server { grid-template-columns: minmax(0, 1fr); }
+.setting-rows { display: grid; border-top: 1px solid var(--line); max-width: 52rem; }
+.setting-row {
+  display: grid; grid-template-columns: 1fr 15rem; gap: 1rem; align-items: center;
+  padding: .75rem 0; border-bottom: 1px solid var(--line);
+}
+.setting-row .slabel { font-weight: 500; }
+.setting-row .sdesc { color: var(--muted); font-size: .88rem; max-width: 55ch; }
+.badge {
+  display: inline-block; font-size: .72rem; border: 1px solid var(--gold); color: var(--gold);
+  border-radius: 999px; padding: 0 .5rem; margin-left: .4rem; vertical-align: .1em;
+}
+.switch { display: inline-flex; align-items: center; gap: .5rem; }
+.num { width: 8rem; }
+.list-cols { display: grid; grid-template-columns: repeat(auto-fit, minmax(16rem, 1fr)); gap: 1.5rem; max-width: 60rem; }
+.mini-list { list-style: none; margin: .5rem 0 0; padding: 0; border-top: 1px solid var(--line); }
+.mini-list li {
+  display: flex; justify-content: space-between; align-items: center; gap: .75rem;
+  padding: .45rem 0; border-bottom: 1px solid var(--line);
+}
+.mini-list .detail { color: var(--muted); font-size: .82rem; }
+.add-row { display: flex; gap: .4rem; margin-top: .6rem; }
+.add-row .input { min-width: 0; }
+.warn {
+  border-left: 3px solid var(--gold); background: var(--panel); padding: .6rem .9rem;
+  border-radius: var(--radius-s); max-width: 52rem; margin: 0 0 1.25rem;
+}
+
 /* ---------- melding ---------- */
 .toast {
   position: fixed; bottom: 1.25rem; left: 50%; transform: translate(-50%, 1rem); opacity: 0;
@@ -190,6 +231,7 @@ main { padding: 1.5rem 2rem 3rem; min-width: 0; }
   .perm-layout { grid-template-columns: minmax(0, 1fr); }
   .group-list { position: static; max-height: 14rem; }
   .perm-row { grid-template-columns: 1fr; gap: .5rem; }
+  .setting-row { grid-template-columns: 1fr; gap: .4rem; }
 }
 @media (prefers-reduced-motion: reduce) { .toast { transition: none; } }
 </style>
@@ -198,12 +240,16 @@ main { padding: 1.5rem 2rem 3rem; min-width: 0; }
 <header class="bar">
   <div class="brand">Rol<span>Beheer</span></div>
   <div class="actions">
+    <nav class="viewnav" aria-label="Onderdelen">
+      <button type="button" data-view="roles" aria-current="true">Rollen</button>
+      <button type="button" data-view="server" aria-current="false">Server</button>
+    </nav>
     <span class="bar-info" id="onlineInfo"></span>
     <button class="btn" id="scanBtn" type="button">Plugins opnieuw scannen</button>
   </div>
 </header>
 
-<div class="layout">
+<div class="layout" id="layout">
   <aside class="sidebar">
     <h2 id="rolesHeading">Rollen</h2>
     <ul class="role-list" id="roleList" aria-labelledby="rolesHeading"></ul>
@@ -237,7 +283,13 @@ const COLOR_LABELS = {
 };
 const OWN = "__own";
 
+const CHOICE_LABELS = {
+  peaceful: "Vreedzaam", easy: "Makkelijk", normal: "Normaal", hard: "Moeilijk",
+  survival: "Overleven", creative: "Creatief", adventure: "Avontuur", spectator: "Toeschouwer"
+};
+
 const S = {
+  view: "roles", server: null, serverTab: "props",
   state: null, plugins: null, role: null, tab: "settings",
   group: OWN, search: "", onlyCmd: false, groupFilter: "",
   form: null, previewPrefix: "", previewSuffix: ""
@@ -341,8 +393,157 @@ function renderAll() {
   if (!currentRole()) S.role = S.state.roles[0]?.name ?? null;
   const n = S.state.online.length;
   $("#onlineInfo").textContent = n === 1 ? "1 speler online" : `${n} spelers online`;
+  document.querySelectorAll(".viewnav button").forEach(b =>
+    b.setAttribute("aria-current", String(b.dataset.view === S.view)));
+  $("#layout").classList.toggle("server", S.view === "server");
+  $("#scanBtn").hidden = S.view === "server";
+  if (S.view === "server") { renderServer(); return; }
   renderRoleList();
   renderMain();
+}
+
+// ------------------------------------------------------------------ serverweergave
+
+async function openServer() {
+  S.view = "server";
+  renderAll();
+  if (!S.server) {
+    try { S.server = await api("server"); } catch (e) {
+      if (e.message !== "uitgelogd") { $("#main").innerHTML = `<p class="empty">${esc(e.message)}</p>`; return; }
+    }
+  }
+  renderServer();
+}
+
+async function serverChange(path, body, okText) {
+  try {
+    S.server = await api(path, body);
+    renderServer();
+    toast(S.server.message || okText || "Opgeslagen.");
+  } catch (e) {
+    if (e.message !== "uitgelogd") { toast(e.message, true); renderServer(); }
+  }
+}
+
+function renderServer() {
+  const main = $("#main");
+  if (!S.server) { main.innerHTML = '<p class="empty">Laden…</p>'; return; }
+  const tab = (id, label) =>
+    `<button class="tab" role="tab" type="button" data-stab="${id}" aria-selected="${S.serverTab === id}">${label}</button>`;
+  main.innerHTML = `
+    <section class="role-head"><h1>Serverinstellingen</h1>
+      <p class="role-meta">Wijzigingen worden meteen opgeslagen.</p></section>
+    <div class="tabs" role="tablist">
+      ${tab("props", "Server")}${tab("rules", "Gameregels")}${tab("access", "Spelers en toegang")}
+    </div>
+    <section id="serverBody" role="tabpanel"></section>`;
+  if (S.serverTab === "props") renderProps();
+  else if (S.serverTab === "rules") renderRules();
+  else renderAccess();
+}
+
+function propControl(p) {
+  if (p.type === "BOOL") {
+    const on = p.value === "true";
+    return `<label class="switch"><input type="checkbox" data-prop="${p.key}" ${on ? "checked" : ""}>
+      <span>${on ? "Aan" : "Uit"}</span></label>`;
+  }
+  if (p.type === "CHOICE") {
+    return `<select class="input" data-prop="${p.key}">${p.options.map(o =>
+      `<option value="${o}" ${o === p.value ? "selected" : ""}>${esc(CHOICE_LABELS[o] || o)}</option>`).join("")}</select>`;
+  }
+  if (p.type === "NUMBER") {
+    return `<input class="input num" type="number" min="${p.min}" max="${p.max}" value="${esc(p.value)}" data-prop="${p.key}">`;
+  }
+  return `<input class="input" value="${esc(p.value)}" data-prop="${p.key}">`;
+}
+
+function renderProps() {
+  const rows = S.server.properties.map(p => `
+    <div class="setting-row">
+      <div><div class="slabel">${esc(p.label)}${p.restart ? '<span class="badge">herstart nodig</span>' : ""}</div>
+        ${p.description ? `<div class="sdesc">${esc(p.description)}</div>` : ""}</div>
+      <div>${propControl(p)}</div>
+    </div>`).join("");
+  $("#serverBody").innerHTML = `
+    <p class="warn">Dit past <code>server.properties</code> aan. Instellingen zonder het label
+      "herstart nodig" gaan direct in; de rest werkt pas na een herstart van de server.</p>
+    <div class="setting-rows">${rows}</div>`;
+}
+
+function renderRules() {
+  const worlds = S.server.worlds;
+  const picker = worlds.length < 2 ? "" : `
+    <div class="perm-tools"><label for="worldPick">Wereld</label>
+      <select class="input" id="worldPick" style="max-width:16rem">${worlds.map(w =>
+        `<option value="${esc(w)}" ${w === S.server.world ? "selected" : ""}>${esc(w)}</option>`).join("")}</select></div>`;
+  const rows = S.server.gamerules.map(r => {
+    const control = r.bool
+      ? `<label class="switch"><input type="checkbox" data-rule="${r.key}" ${r.value === "true" ? "checked" : ""}>
+         <span>${r.value === "true" ? "Aan" : "Uit"}</span></label>`
+      : `<input class="input num" type="number" value="${esc(r.value)}" data-rule="${r.key}">`;
+    return `<div class="setting-row">
+      <div><div class="slabel">${esc(r.label)}</div>
+        ${r.description ? `<div class="sdesc">${esc(r.description)}</div>` : ""}
+        <div class="perm-node">${esc(r.key)}</div></div>
+      <div>${control}</div></div>`;
+  }).join("");
+  $("#serverBody").innerHTML = `
+    <p class="warn">Gameregels gelden per wereld en gaan meteen in.</p>
+    ${picker}<div class="setting-rows">${rows}</div>`;
+}
+
+function accessList(title, items, action, buttonText, emptyText) {
+  return `<div><h2 style="margin:0;font-size:1.05rem">${esc(title)}</h2>
+    <ul class="mini-list">${items.map(i => `
+      <li><span>${esc(i.name)}${i.detail ? ` <span class="detail">${esc(i.detail)}</span>` : ""}</span>
+        <button class="btn btn-small" type="button" data-access="${action}" data-player="${esc(i.name)}">${buttonText}</button></li>`).join("")
+      || `<li class="hint">${esc(emptyText)}</li>`}</ul></div>`;
+}
+
+function renderAccess() {
+  const a = S.server.access;
+  $("#serverBody").innerHTML = `
+    <div class="setting-rows" style="max-width:52rem">
+      <div class="setting-row">
+        <div><div class="slabel">Witte lijst</div>
+          <div class="sdesc">Staat deze aan, dan kunnen alleen spelers van de lijst hieronder inloggen.</div></div>
+        <div><label class="switch"><input type="checkbox" id="wlToggle" ${a.whitelistEnabled ? "checked" : ""}>
+          <span>${a.whitelistEnabled ? "Aan" : "Uit"}</span></label></div>
+      </div>
+    </div>
+    <div class="list-cols" style="margin-top:1.5rem">
+      <div>
+        ${accessList("Op de witte lijst", a.whitelist, "whitelist-remove", "Verwijderen", "Nog niemand op de lijst.")}
+        <form class="add-row" data-add="whitelist-add">
+          <label class="sr-only" for="wlName">Speler toevoegen aan witte lijst</label>
+          <input class="input" id="wlName" placeholder="Spelersnaam" list="onlineNames" autocomplete="off" required>
+          <button class="btn btn-primary" type="submit">Toevoegen</button>
+        </form>
+      </div>
+      <div>
+        ${accessList("Operators", a.ops, "deop", "Rechten afnemen", "Geen operators.")}
+        <form class="add-row" data-add="op">
+          <label class="sr-only" for="opName">Speler operator maken</label>
+          <input class="input" id="opName" placeholder="Spelersnaam" list="onlineNames" autocomplete="off" required>
+          <button class="btn" type="submit">Operator maken</button>
+        </form>
+        <p class="hint">Een operator mag standaard alles, ook wat je in een rol op "Niet ingesteld" hebt staan.
+          Gebruik liever een rol met de permissies die je wilt geven.</p>
+      </div>
+      <div>
+        ${accessList("Verbannen", a.bans, "unban", "Opheffen", "Niemand verbannen.")}
+        <form class="add-row" data-add="ban">
+          <label class="sr-only" for="banName">Speler verbannen</label>
+          <input class="input" id="banName" placeholder="Spelersnaam" autocomplete="off" required>
+          <button class="btn btn-danger" type="submit">Verbannen</button>
+        </form>
+      </div>
+      <div>
+        ${accessList("Nu online", a.online.map(n => ({ name: n, detail: "" })), "kick", "Van server halen", "Niemand online.")}
+      </div>
+    </div>
+    <datalist id="onlineNames">${a.online.map(n => `<option value="${esc(n)}">`).join("")}</datalist>`;
 }
 
 function renderRoleList() {
@@ -608,6 +809,24 @@ document.addEventListener("click", async (ev) => {
   if (!t) return;
   const role = currentRole();
 
+  if (t.dataset.view) {
+    if (t.dataset.view === "server") { await openServer(); }
+    else { S.view = "roles"; renderAll(); }
+    return;
+  }
+  if (t.dataset.stab) { S.serverTab = t.dataset.stab; renderServer(); return; }
+  if (t.dataset.access) {
+    const player = t.dataset.player;
+    const action = t.dataset.access;
+    if (action === "ban" || action === "kick" || action === "deop") {
+      const vraag = { ban: `${player} verbannen?`, kick: `${player} van de server halen?`,
+        deop: `${player} geen operator meer maken?` }[action];
+      if (!confirm(vraag)) return;
+    }
+    await serverChange("server/player", { action, player });
+    return;
+  }
+
   if (t.dataset.role) {
     S.role = t.dataset.role; S.form = null; S.search = "";
     renderAll();
@@ -656,6 +875,22 @@ document.addEventListener("click", async (ev) => {
   }
 });
 
+document.addEventListener("change", async (ev) => {
+  const t = ev.target;
+  if (t.dataset.prop) {
+    const value = t.type === "checkbox" ? String(t.checked) : t.value;
+    await serverChange("server/property", { key: t.dataset.prop, value });
+  } else if (t.dataset.rule) {
+    const value = t.type === "checkbox" ? String(t.checked) : t.value;
+    await serverChange("server/gamerule", { world: S.server.world, key: t.dataset.rule, value });
+  } else if (t.id === "wlToggle") {
+    await serverChange("server/whitelist", { on: t.checked });
+  } else if (t.id === "worldPick") {
+    try { S.server = await api("server/world", { world: t.value }); renderServer(); }
+    catch (e) { if (e.message !== "uitgelogd") toast(e.message, true); }
+  }
+});
+
 document.addEventListener("input", (ev) => {
   const t = ev.target;
   if (t.id === "fPrefix") { S.form.prefix = t.value; schedulePreview(); refreshSaveState(); }
@@ -698,6 +933,13 @@ document.addEventListener("submit", async (ev) => {
     const state = ev.submitter?.dataset.state || "ALLOW";
     if (node) await change("role/perm", { role: role.name, node, state },
       state === "ALLOW" ? `${node} toegestaan.` : `${node} verboden.`);
+  } else if (f.dataset.add) {
+    const input = f.querySelector("input");
+    const player = input.value.trim();
+    if (!player) return;
+    if (f.dataset.add === "ban" && !confirm(`${player} verbannen?`)) return;
+    await serverChange("server/player", { action: f.dataset.add, player });
+    input.value = "";
   } else if (f.id === "playerAdd") {
     const player = $("#playerName").value.trim();
     await change("player/role", { role: role.name, player, action: "add" }, `${player} heeft nu de rol ${role.name}.`);

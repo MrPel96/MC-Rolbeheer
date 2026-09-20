@@ -1,10 +1,10 @@
-# RolBeheer 1.1.0
+# RolBeheer 1.2.0
 
 Eenvoudige rollen- en permissieplugin voor Paper.
 
 ## Bouwen
 **Zonder iets te installeren (GitHub):** zet deze map in een GitHub-repository. Bij elke push bouwt
-GitHub Actions de plugin. Download `RolBeheer-1.1.0.jar` onder *Actions → laatste run → Artifacts*.
+GitHub Actions de plugin. Download `RolBeheer-1.2.0.jar` onder *Actions → laatste run → Artifacts*.
 
 **Lokaal:** installeer JDK 21 en Maven, en voer `mvn package` uit. De jar staat in `target/`.
 Of open de map in IntelliJ IDEA en voer Maven → Lifecycle → package uit.
@@ -35,6 +35,25 @@ Daarna blijf je 12 uur ingelogd in die browser.
   Het paneel gebruikt gewone http. Deel de inloglink daarom niet en gebruik dit liever niet via openbare wifi.
 
 Elke wijziging via het paneel komt in de console, met `[Web]` ervoor.
+
+Het paneel heeft twee onderdelen, te kiezen rechtsboven:
+
+**Rollen** — rollen maken, prefix en naamkleur instellen, permissies per plugin regelen en spelers een rol geven.
+
+**Server** — instellingen die voorheen alleen via bestanden konden:
+- *Server*: servernaam, maximaal aantal spelers, moeilijkheidsgraad, PvP, spelmodus, kijkafstand, spawn-bescherming en meer. Dit past `server.properties` aan. Instellingen met het label "herstart nodig" werken pas na een herstart; de rest gaat meteen in.
+- *Gameregels*: spullen behouden na de dood, dag-nachtcyclus, mobs die blokken slopen, vuur dat zich verspreidt, en zo verder. Per wereld, en meteen actief.
+- *Spelers en toegang*: witte lijst aan of uit en beheren, operators toekennen of afnemen, verbanningen opheffen en spelers van de server halen.
+
+Instellingen in `bukkit.yml`, `spigot.yml` en `paper.yml` zitten er bewust niet in. Daar staan honderden technische opties die je server ook echt kapot kunnen configureren.
+
+## Rollen en OP
+Een operator (OP) mag standaard alles. Staat een permissie in een rol op "Niet ingesteld", dan geldt
+de standaard van de plugin, en die is voor een OP meestal "toegestaan". Wil je iets dichtzetten dat
+een OP ook niet mag, zet het dan op **Verboden**: een expliciet verbod wint van OP-rechten.
+
+Handiger is om jezelf de rol `admin` te geven (die heeft `*`) en je OP-status weg te halen met
+`/deop <naam>`. Dan test je onder dezelfde regels als je spelers.
 
 ## Bestanden
 - `config.yml`: standaardrol, chatformaat, tab/naamlabel aan/uit
