@@ -1,5 +1,9 @@
 name: Build RolBeheer
 on: [push, workflow_dispatch]
+
+permissions:
+  contents: write
+
 jobs:
   build:
     runs-on: ubuntu-latest
@@ -15,3 +19,11 @@ jobs:
         with:
           name: RolBeheer
           path: target/RolBeheer-*.jar
+      - name: Release maken
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          VERSION=$(mvn -q -DforceStdout help:evaluate -Dexpression=project.version)
+          gh release delete "v$VERSION" -y --cleanup-tag || true
+          gh release create "v$VERSION" target/RolBeheer-$VERSION.jar \
+            --title "RolBeheer $VERSION" --notes "Automatisch gebouwd vanaf $GITHUB_SHA"
