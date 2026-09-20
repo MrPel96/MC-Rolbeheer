@@ -1,0 +1,726 @@
+<!doctype html>
+<html lang="nl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>RolBeheer</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Chivo:wght@400;500;700&family=Pixelify+Sans:wght@400;600&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg: #262a31;
+  --panel: #30353d;
+  --panel-2: #393f48;
+  --line: #474e59;
+  --text: #ebe7df;
+  --muted: #a3a9b1;
+  --gold: #f2b83a;
+  --gold-ink: #2b2006;
+  --allow: #62c370;
+  --deny: #e5625a;
+  --radius-s: 4px;
+  --radius-m: 8px;
+  --ui: "Chivo", system-ui, -apple-system, "Segoe UI", sans-serif;
+  --pixel: "Pixelify Sans", "Courier New", monospace;
+}
+* { box-sizing: border-box; }
+html, body { margin: 0; height: 100%; }
+body {
+  background: var(--bg);
+  color: var(--text);
+  font: 15px/1.5 var(--ui);
+}
+button, input { font: inherit; color: inherit; }
+button { cursor: pointer; }
+:focus-visible { outline: 2px solid var(--gold); outline-offset: 2px; }
+.sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); }
+
+/* ---------- balk bovenaan ---------- */
+.bar {
+  display: flex; align-items: center; justify-content: space-between; gap: 1rem;
+  padding: .7rem 1.25rem; border-bottom: 1px solid var(--line); background: var(--panel);
+}
+.brand { font-family: var(--pixel); font-size: 1.35rem; font-weight: 600; letter-spacing: .02em; }
+.brand span { color: var(--gold); }
+.bar-info { color: var(--muted); font-size: .85rem; }
+
+/* ---------- knoppen & velden ---------- */
+.btn {
+  border: 1px solid var(--line); background: var(--panel-2); border-radius: var(--radius-s);
+  padding: .45rem .85rem; font-weight: 500; white-space: nowrap;
+}
+.btn:hover { border-color: var(--muted); }
+.btn-primary { background: var(--gold); border-color: var(--gold); color: var(--gold-ink); font-weight: 700; }
+.btn-primary:hover { filter: brightness(1.08); border-color: var(--gold); }
+.btn-primary:disabled { opacity: .45; cursor: default; filter: none; }
+.btn-danger { color: var(--deny); }
+.btn-small { padding: .25rem .6rem; font-size: .85rem; }
+.field { display: grid; gap: .3rem; }
+.field label { font-weight: 500; }
+.hint { color: var(--muted); font-size: .85rem; max-width: 65ch; }
+.input {
+  width: 100%; background: var(--bg); border: 1px solid var(--line); border-radius: var(--radius-s);
+  padding: .5rem .65rem;
+}
+.input:focus { border-color: var(--gold); outline: none; }
+code { background: #0005; padding: .05rem .35rem; border-radius: 3px; font-size: .9em; }
+
+/* ---------- indeling ---------- */
+.layout { display: grid; grid-template-columns: 270px 1fr; min-height: calc(100vh - 52px); }
+.sidebar { border-right: 1px solid var(--line); padding: 1rem; display: flex; flex-direction: column; gap: 1rem; }
+.sidebar h2 { font-size: 1rem; margin: 0; color: var(--muted); font-weight: 500; }
+.role-list { list-style: none; margin: 0; padding: 0; display: grid; gap: 2px; }
+.role-item {
+  width: 100%; text-align: left; background: none; border: 0; border-radius: var(--radius-s);
+  padding: .55rem .65rem; display: grid; grid-template-columns: 1fr auto; gap: .1rem .5rem;
+}
+.role-item:hover { background: var(--panel); }
+.role-item[aria-current="true"] { background: var(--panel-2); box-shadow: inset 3px 0 0 var(--gold); }
+.role-item .rname { font-weight: 700; }
+.role-item .rprefix { font-family: var(--pixel); font-size: .9rem; grid-column: 1 / -1; min-height: 1.2em; }
+.role-item .rprio { color: var(--muted); font-size: .8rem; font-variant-numeric: tabular-nums; }
+.new-role { display: flex; gap: .4rem; }
+.new-role .input { min-width: 0; }
+
+main { padding: 1.5rem 2rem 3rem; min-width: 0; }
+.empty { color: var(--muted); padding: 3rem 0; }
+
+/* ---------- kop van een rol met chatvoorbeeld (het opvallende element) ---------- */
+.role-head { display: grid; gap: .9rem; margin-bottom: 1.5rem; }
+.role-head h1 { margin: 0; font-size: 1.6rem; line-height: 1.2; }
+.role-meta { color: var(--muted); margin: 0; }
+.chat {
+  font-family: var(--pixel); font-size: 1.25rem; line-height: 1.6;
+  background: rgba(0, 0, 0, .45); color: #fff; padding: .45rem .8rem; border-radius: 2px;
+  text-shadow: 2px 2px 0 rgba(0, 0, 0, .55); max-width: 40rem; overflow-wrap: anywhere;
+}
+.chat .sep { color: #555; }
+.chat-caption { color: var(--muted); font-size: .8rem; margin-top: -.5rem; }
+
+/* ---------- tabs ---------- */
+.tabs { display: flex; gap: .25rem; border-bottom: 1px solid var(--line); margin-bottom: 1.5rem; }
+.tab {
+  background: none; border: 0; padding: .6rem .9rem; color: var(--muted); font-weight: 500;
+  border-bottom: 2px solid transparent; margin-bottom: -1px;
+}
+.tab[aria-selected="true"] { color: var(--text); border-bottom-color: var(--gold); }
+.tab .count { font-size: .8rem; color: var(--muted); margin-left: .25rem; }
+
+/* ---------- instellingen ---------- */
+.settings { display: grid; gap: 1.25rem; max-width: 36rem; }
+.swatches { display: flex; flex-wrap: wrap; gap: .35rem; }
+.swatch {
+  width: 2rem; height: 2rem; border-radius: var(--radius-s); border: 2px solid var(--line); padding: 0;
+}
+.swatch[aria-pressed="true"] { border-color: var(--text); box-shadow: 0 0 0 2px var(--bg), 0 0 0 4px var(--gold); }
+.swatch-none { background: repeating-linear-gradient(45deg, var(--panel-2) 0 5px, var(--bg) 5px 10px); }
+.prio { display: flex; align-items: center; gap: .5rem; }
+.prio .input { width: 6rem; text-align: center; }
+.actions { display: flex; gap: .6rem; align-items: center; flex-wrap: wrap; }
+.danger-zone { border-top: 1px solid var(--line); padding-top: 1.25rem; margin-top: .5rem; }
+
+/* ---------- permissies ---------- */
+.perm-layout { display: grid; grid-template-columns: 250px 1fr; gap: 1.5rem; align-items: start; }
+.group-list { display: grid; gap: 2px; position: sticky; top: 1rem; max-height: calc(100vh - 2rem); overflow: auto; }
+.group-item {
+  background: none; border: 0; border-radius: var(--radius-s); padding: .45rem .6rem; text-align: left;
+  display: flex; justify-content: space-between; gap: .5rem; align-items: baseline;
+}
+.group-item:hover { background: var(--panel); }
+.group-item[aria-current="true"] { background: var(--panel-2); box-shadow: inset 3px 0 0 var(--gold); }
+.group-item.off .gname { color: var(--muted); text-decoration: line-through; }
+.gcount { font-size: .78rem; white-space: nowrap; font-variant-numeric: tabular-nums; }
+.gcount .a { color: var(--allow); }
+.gcount .d { color: var(--deny); }
+.gcount .t { color: var(--muted); }
+
+.perm-tools { display: flex; flex-wrap: wrap; gap: .6rem; align-items: center; margin-bottom: 1rem; }
+.perm-tools .input { max-width: 18rem; }
+.check { display: inline-flex; gap: .4rem; align-items: center; color: var(--muted); }
+.perm-rows { display: grid; border-top: 1px solid var(--line); }
+.perm-row {
+  display: grid; grid-template-columns: 1fr auto; gap: 1rem; align-items: center;
+  padding: .65rem 0; border-bottom: 1px solid var(--line);
+}
+.perm-title { font-weight: 700; overflow-wrap: anywhere; }
+.perm-title.cmd { font-family: var(--pixel); font-weight: 600; font-size: 1.05rem; }
+.perm-node { color: var(--muted); font-size: .82rem; overflow-wrap: anywhere; }
+.perm-desc { font-size: .9rem; margin-top: .15rem; max-width: 60ch; }
+.perm-note { font-size: .82rem; color: var(--gold); margin-top: .15rem; }
+.seg { display: inline-flex; border: 1px solid var(--line); border-radius: var(--radius-s); overflow: hidden; }
+.seg button { background: var(--bg); border: 0; padding: .35rem .7rem; font-size: .85rem; color: var(--muted); }
+.seg button + button { border-left: 1px solid var(--line); }
+.seg button[aria-pressed="true"][data-s="ALLOW"] { background: var(--allow); color: #0d2a12; font-weight: 700; }
+.seg button[aria-pressed="true"][data-s="DENY"] { background: var(--deny); color: #2e0906; font-weight: 700; }
+.seg button[aria-pressed="true"][data-s="NONE"] { background: var(--panel-2); color: var(--text); font-weight: 700; }
+.own-add { display: flex; gap: .5rem; flex-wrap: wrap; margin-bottom: 1rem; }
+.own-add .input { max-width: 22rem; }
+.tag-allow { color: var(--allow); font-weight: 700; }
+.tag-deny { color: var(--deny); font-weight: 700; }
+
+/* ---------- spelers ---------- */
+.player-add { display: flex; gap: .5rem; max-width: 30rem; margin-bottom: 1.25rem; }
+.player-list { list-style: none; padding: 0; margin: 0; max-width: 30rem; border-top: 1px solid var(--line); }
+.player-list li {
+  display: flex; justify-content: space-between; align-items: center; gap: 1rem;
+  padding: .55rem 0; border-bottom: 1px solid var(--line);
+}
+.dot { display: inline-block; width: .55rem; height: .55rem; border-radius: 50%; background: var(--line); margin-right: .5rem; }
+.dot.on { background: var(--allow); }
+
+/* ---------- melding ---------- */
+.toast {
+  position: fixed; bottom: 1.25rem; left: 50%; transform: translate(-50%, 1rem); opacity: 0;
+  background: var(--panel-2); border: 1px solid var(--line); border-left: 4px solid var(--allow);
+  padding: .6rem 1rem; border-radius: var(--radius-s); pointer-events: none;
+  transition: opacity .2s, transform .2s; max-width: calc(100vw - 2rem);
+}
+.toast.show { opacity: 1; transform: translate(-50%, 0); }
+.toast.err { border-left-color: var(--deny); }
+
+@media (max-width: 860px) {
+  .layout { grid-template-columns: minmax(0, 1fr); }
+  .sidebar { border-right: 0; border-bottom: 1px solid var(--line); min-width: 0; }
+  .bar { padding: .6rem 1rem; }
+  .bar-info { display: none; }
+  #scanBtn { padding: .35rem .6rem; font-size: .85rem; }
+  .role-list { grid-auto-flow: column; grid-auto-columns: max-content; overflow-x: auto; }
+  main { padding: 1.25rem 1rem 3rem; }
+  .perm-layout { grid-template-columns: minmax(0, 1fr); }
+  .group-list { position: static; max-height: 14rem; }
+  .perm-row { grid-template-columns: 1fr; gap: .5rem; }
+}
+@media (prefers-reduced-motion: reduce) { .toast { transition: none; } }
+</style>
+</head>
+<body>
+<header class="bar">
+  <div class="brand">Rol<span>Beheer</span></div>
+  <div class="actions">
+    <span class="bar-info" id="onlineInfo"></span>
+    <button class="btn" id="scanBtn" type="button">Plugins opnieuw scannen</button>
+  </div>
+</header>
+
+<div class="layout">
+  <aside class="sidebar">
+    <h2 id="rolesHeading">Rollen</h2>
+    <ul class="role-list" id="roleList" aria-labelledby="rolesHeading"></ul>
+    <form class="new-role" id="newRoleForm">
+      <label class="sr-only" for="newRoleName">Naam van nieuwe rol</label>
+      <input class="input" id="newRoleName" placeholder="naam nieuwe rol" autocomplete="off"
+             pattern="[a-z0-9_\-]{1,32}" title="Alleen a-z, 0-9, _ en -" required>
+      <button class="btn btn-primary" type="submit">Maken</button>
+    </form>
+  </aside>
+
+  <main id="main"><p class="empty">Laden…</p></main>
+</div>
+
+<div class="toast" id="toast" role="status" aria-live="polite"></div>
+
+<script>
+"use strict";
+
+const MC_COLORS = {
+  black: "#000000", dark_blue: "#0000AA", dark_green: "#00AA00", dark_aqua: "#00AAAA",
+  dark_red: "#AA0000", dark_purple: "#AA00AA", gold: "#FFAA00", gray: "#AAAAAA",
+  dark_gray: "#555555", blue: "#5555FF", green: "#55FF55", aqua: "#55FFFF",
+  red: "#FF5555", light_purple: "#FF55FF", yellow: "#FFFF55", white: "#FFFFFF"
+};
+const COLOR_LABELS = {
+  black: "zwart", dark_blue: "donkerblauw", dark_green: "donkergroen", dark_aqua: "donkerturquoise",
+  dark_red: "donkerrood", dark_purple: "paars", gold: "goud", gray: "grijs", dark_gray: "donkergrijs",
+  blue: "blauw", green: "groen", aqua: "turquoise", red: "rood", light_purple: "roze",
+  yellow: "geel", white: "wit"
+};
+const OWN = "__own";
+
+const S = {
+  state: null, plugins: null, role: null, tab: "settings",
+  group: OWN, search: "", onlyCmd: false, groupFilter: "",
+  form: null, previewPrefix: "", previewSuffix: ""
+};
+
+const $ = (sel, root = document) => root.querySelector(sel);
+const esc = (s) => String(s ?? "").replace(/[&<>"']/g, c =>
+  ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+
+// ------------------------------------------------------------------ server
+
+async function api(path, body) {
+  const opt = body === undefined ? {} : {
+    method: "POST",
+    headers: { "Content-Type": "application/json", "X-RolBeheer": "1" },
+    body: JSON.stringify(body)
+  };
+  let res;
+  try {
+    res = await fetch("/api/" + path, opt);
+  } catch {
+    throw new Error("Geen verbinding met de server. Draait Minecraft nog?");
+  }
+  const data = await res.json().catch(() => ({}));
+  if (res.status === 401) {
+    document.body.innerHTML = '<main style="padding:3rem;max-width:30rem"><h1>Je bent uitgelogd</h1>' +
+      '<p>Typ <code>/rol web</code> in de game voor een nieuwe inloglink.</p></main>';
+    throw new Error("uitgelogd");
+  }
+  if (!res.ok) throw new Error(data.error || "Er ging iets mis.");
+  return data;
+}
+
+async function change(path, body, okText) {
+  // Focus onthouden zodat toetsenbordgebruikers niet hun plek kwijtraken
+  const a = document.activeElement;
+  const keep = a && a.dataset && a.dataset.node ? `[data-node="${CSS.escape(a.dataset.node)}"][data-s="${a.dataset.s}"]` : null;
+  try {
+    S.state = await api(path, body);
+    renderAll();
+    if (keep) $(keep)?.focus({ preventScroll: true });
+    if (okText) toast(okText);
+    return true;
+  } catch (e) {
+    if (e.message !== "uitgelogd") toast(e.message, true);
+    return false;
+  }
+}
+
+let toastTimer;
+function toast(text, error = false) {
+  const t = $("#toast");
+  t.textContent = text;
+  t.classList.toggle("err", error);
+  t.classList.add("show");
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => t.classList.remove("show"), error ? 5000 : 2200);
+}
+
+// ------------------------------------------------------------------ helpers
+
+const currentRole = () => S.state?.roles.find(r => r.name === S.role) || null;
+
+function permState(role, node) {
+  if (role.permissions.includes(node)) return "ALLOW";
+  if (role.permissions.includes("-" + node)) return "DENY";
+  return "NONE";
+}
+
+/** Valt deze permissie onder een wildcard van de rol? */
+function wildcardHit(role, node) {
+  let hit = null;
+  for (const raw of role.permissions) {
+    const deny = raw.startsWith("-");
+    const p = deny ? raw.slice(1) : raw;
+    if (p === "*" || (p.endsWith(".*") && node.startsWith(p.slice(0, -1)) && node !== p)) {
+      hit = { wildcard: p, deny };
+    }
+  }
+  return hit;
+}
+
+function groupCounts(role, group) {
+  let a = 0, d = 0;
+  for (const e of group.entries) {
+    const s = permState(role, e.node);
+    if (s === "ALLOW") a++; else if (s === "DENY") d++;
+  }
+  return { a, d };
+}
+
+function nameHtml(colorName) {
+  const c = MC_COLORS[colorName];
+  return `<span${c ? ` style="color:${c}"` : ""}>Steve</span>`;
+}
+
+// ------------------------------------------------------------------ render
+
+function renderAll() {
+  if (!S.state) return;
+  if (!currentRole()) S.role = S.state.roles[0]?.name ?? null;
+  const n = S.state.online.length;
+  $("#onlineInfo").textContent = n === 1 ? "1 speler online" : `${n} spelers online`;
+  renderRoleList();
+  renderMain();
+}
+
+function renderRoleList() {
+  $("#roleList").innerHTML = S.state.roles.map(r => `
+    <li><button class="role-item" type="button" data-role="${esc(r.name)}"
+        aria-current="${r.name === S.role}">
+      <span class="rname">${esc(r.name)}</span>
+      <span class="rprio" title="Prioriteit">${r.priority}</span>
+      <span class="rprefix">${r.prefixHtml}</span>
+    </button></li>`).join("");
+}
+
+function renderMain() {
+  const role = currentRole();
+  const main = $("#main");
+  if (!role) { main.innerHTML = '<p class="empty">Maak links je eerste rol aan.</p>'; return; }
+
+  if (!S.form || S.form.name !== role.name) resetForm(role);
+
+  const memberText = role.isDefault ? "Iedere speler heeft deze rol automatisch."
+    : role.members.length === 1 ? "1 speler heeft deze rol." : `${role.members.length} spelers hebben deze rol.`;
+
+  main.innerHTML = `
+    <section class="role-head">
+      <h1>${esc(role.name)}</h1>
+      <p class="role-meta">Prioriteit ${role.priority}. ${memberText}</p>
+      <div class="chat" id="chatPreview" aria-label="Voorbeeld in de chat"></div>
+      <div class="chat-caption">Zo ziet de chat eruit voor spelers met deze rol als hoogste rol.</div>
+    </section>
+    <div class="tabs" role="tablist">
+      ${tabBtn("settings", "Instellingen")}
+      ${tabBtn("perms", "Permissies", role.permissions.length)}
+      ${tabBtn("players", "Spelers", role.isDefault ? "" : role.members.length)}
+    </div>
+    <section id="tabBody" role="tabpanel"></section>`;
+
+  updateChatPreview();
+  if (S.tab === "settings") renderSettings(role);
+  else if (S.tab === "perms") renderPerms(role);
+  else renderPlayers(role);
+}
+
+function tabBtn(id, label, count) {
+  const c = count === "" || count === undefined ? "" : `<span class="count">${count}</span>`;
+  return `<button class="tab" role="tab" type="button" data-tab="${id}" aria-selected="${S.tab === id}">${label}${c}</button>`;
+}
+
+function updateChatPreview() {
+  const el = $("#chatPreview");
+  if (!el || !S.form) return;
+  const p = S.previewPrefix ? S.previewPrefix + " " : "";
+  const s = S.previewSuffix ? " " + S.previewSuffix : "";
+  el.innerHTML = `${p}${nameHtml(S.form.nameColor)}${s}<span class="sep"> » </span>hoi allemaal!`;
+}
+
+// ---------- instellingen
+
+function resetForm(role) {
+  S.form = { name: role.name, prefix: role.prefix, suffix: role.suffix, priority: role.priority, nameColor: role.nameColor };
+  S.previewPrefix = role.prefixHtml;
+  S.previewSuffix = role.suffixHtml;
+}
+
+function formDirty(role) {
+  const f = S.form;
+  return f.prefix !== role.prefix || f.suffix !== role.suffix
+    || Number(f.priority) !== role.priority || f.nameColor !== role.nameColor;
+}
+
+function renderSettings(role) {
+  const f = S.form;
+  const swatches = [`<button type="button" class="swatch swatch-none" data-color="" aria-pressed="${f.nameColor === ""}"
+      title="Geen kleur" aria-label="Geen kleur"></button>`]
+    .concat(Object.entries(MC_COLORS).map(([k, hex]) =>
+      `<button type="button" class="swatch" data-color="${k}" style="background:${hex}"
+        aria-pressed="${f.nameColor === k}" title="${COLOR_LABELS[k]}" aria-label="${COLOR_LABELS[k]}"></button>`)).join("");
+
+  $("#tabBody").innerHTML = `
+    <form class="settings" id="settingsForm">
+      <div class="field">
+        <label for="fPrefix">Prefix</label>
+        <input class="input" id="fPrefix" value="${esc(f.prefix)}" autocomplete="off" placeholder="&c[Admin]">
+        <span class="hint">Kleuren met <code>&amp;c</code>, vet met <code>&amp;l</code>, of MiniMessage zoals <code>&lt;red&gt;</code> en <code>&lt;gradient:red:gold&gt;</code>.</span>
+      </div>
+      <div class="field">
+        <label for="fSuffix">Suffix</label>
+        <input class="input" id="fSuffix" value="${esc(f.suffix)}" autocomplete="off">
+      </div>
+      <div class="field">
+        <span id="colorLabel" style="font-weight:500">Naamkleur</span>
+        <div class="swatches" role="group" aria-labelledby="colorLabel">${swatches}</div>
+      </div>
+      <div class="field">
+        <label for="fPrio">Prioriteit</label>
+        <div class="prio">
+          <button class="btn" type="button" data-prio="-1" aria-label="Prioriteit omlaag">−</button>
+          <input class="input" id="fPrio" type="number" min="0" max="999" value="${f.priority}">
+          <button class="btn" type="button" data-prio="1" aria-label="Prioriteit omhoog">+</button>
+        </div>
+        <span class="hint">Heeft een speler meerdere rollen, dan bepaalt de hoogste prioriteit de prefix en wint die bij tegenstrijdige permissies.</span>
+      </div>
+      <div class="actions">
+        <button class="btn btn-primary" type="submit" id="saveBtn" ${formDirty(role) ? "" : "disabled"}>Wijzigingen opslaan</button>
+        <button class="btn" type="button" id="undoBtn" ${formDirty(role) ? "" : "hidden"}>Ongedaan maken</button>
+      </div>
+      ${role.isDefault ? '<p class="hint danger-zone">Dit is de standaardrol. Die kun je niet verwijderen; wijzig <code>standaard-rol</code> in config.yml om een andere te kiezen.</p>'
+        : '<div class="danger-zone"><button class="btn btn-danger" type="button" id="deleteBtn">Rol verwijderen</button></div>'}
+    </form>`;
+}
+
+let previewTimer;
+function schedulePreview() {
+  clearTimeout(previewTimer);
+  previewTimer = setTimeout(async () => {
+    try {
+      const [p, s] = await Promise.all([
+        api("preview", { text: S.form.prefix }), api("preview", { text: S.form.suffix })
+      ]);
+      S.previewPrefix = p.html;
+      S.previewSuffix = s.html;
+      updateChatPreview();
+    } catch { /* voorbeeld is niet kritisch */ }
+  }, 250);
+}
+
+function refreshSaveState() {
+  const role = currentRole();
+  const dirty = formDirty(role);
+  $("#saveBtn").disabled = !dirty;
+  $("#undoBtn").hidden = !dirty;
+}
+
+// ---------- permissies
+
+function renderPerms(role) {
+  const groups = S.plugins?.groups ?? [];
+  const filter = S.groupFilter.toLowerCase();
+  const own = role.permissions.length;
+  const list = [`<button class="group-item" type="button" data-group="${OWN}" aria-current="${S.group === OWN}">
+      <span class="gname">Eigen permissies</span><span class="gcount"><span class="t">${own}</span></span></button>`]
+    .concat(groups.filter(g => !filter || g.name.toLowerCase().includes(filter)).map(g => {
+      const { a, d } = groupCounts(role, g);
+      const counts = (a || d)
+        ? `${a ? `<span class="a">${a} ✔</span>` : ""} ${d ? `<span class="d">${d} ✖</span>` : ""}`
+        : `<span class="t">${g.entries.length}</span>`;
+      return `<button class="group-item${g.enabled ? "" : " off"}" type="button" data-group="${esc(g.name)}"
+          aria-current="${S.group === g.name}" title="${g.enabled ? "" : "Deze plugin staat uit"}">
+        <span class="gname">${esc(g.name)}</span><span class="gcount">${counts}</span></button>`;
+    })).join("");
+
+  $("#tabBody").innerHTML = `
+    <div class="perm-layout">
+      <div>
+        <label class="sr-only" for="groupFilter">Plugins filteren</label>
+        <input class="input" id="groupFilter" placeholder="Plugin zoeken" value="${esc(S.groupFilter)}" style="margin-bottom:.6rem">
+        <nav class="group-list" aria-label="Plugins">${list}</nav>
+      </div>
+      <div id="permPane"></div>
+    </div>`;
+  renderPermPane(role);
+}
+
+function visibleEntries(group) {
+  const q = S.search.toLowerCase();
+  return group.entries.filter(e =>
+    (!S.onlyCmd || e.commands.length) &&
+    (!q || e.node.includes(q) || e.description.toLowerCase().includes(q) || e.commands.some(c => c.includes(q))));
+}
+
+function renderPermPane(role) {
+  const pane = $("#permPane");
+  if (S.group === OWN) {
+    const rows = role.permissions.map(p => {
+      const deny = p.startsWith("-");
+      const node = deny ? p.slice(1) : p;
+      return `<div class="perm-row">
+        <div><div class="perm-title">${esc(node)}</div>
+          <div class="perm-node"><span class="${deny ? "tag-deny" : "tag-allow"}">${deny ? "Verboden" : "Toegestaan"}</span></div></div>
+        <button class="btn btn-small" type="button" data-remove="${esc(node)}">Verwijderen</button></div>`;
+    }).join("");
+    pane.innerHTML = `
+      <h2 style="margin:0 0 .3rem;font-size:1.15rem">Eigen permissies</h2>
+      <p class="hint" style="margin:0 0 1rem">Alles wat deze rol heeft ingesteld, ook wildcards.
+        <code>*</code> geeft alles, <code>essentials.*</code> alles van één plugin.</p>
+      <form class="own-add" id="ownAdd">
+        <label class="sr-only" for="ownNode">Permissie</label>
+        <input class="input" id="ownNode" placeholder="bijv. essentials.fly" autocomplete="off" required list="nodeList">
+        <button class="btn btn-primary" type="submit" data-state="ALLOW">Toestaan</button>
+        <button class="btn" type="submit" data-state="DENY">Verbieden</button>
+      </form>
+      <datalist id="nodeList">${(S.plugins?.groups ?? []).flatMap(g => g.entries).slice(0, 3000)
+        .map(e => `<option value="${esc(e.node)}">`).join("")}</datalist>
+      <div class="perm-rows">${rows || '<p class="empty" style="padding:1.5rem 0">Deze rol heeft nog geen permissies. Kies links een plugin of voeg er hierboven een toe.</p>'}</div>`;
+    return;
+  }
+
+  const group = S.plugins?.groups.find(g => g.name === S.group);
+  if (!group) { S.group = OWN; renderPermPane(role); return; }
+  const entries = visibleEntries(group);
+
+  const rows = entries.map(e => {
+    const st = permState(role, e.node);
+    const hit = st === "NONE" ? wildcardHit(role, e.node) : null;
+    const title = e.commands.length
+      ? `<div class="perm-title cmd">${e.commands.map(esc).join(", ")}</div><div class="perm-node">${esc(e.node)}</div>`
+      : `<div class="perm-title">${esc(e.node)}</div>`;
+    const desc = e.virtual
+      ? `<div class="perm-desc">Dit command heeft geen eigen permissie, dus iedereen mag het standaard. Zet het op Verboden om het te blokkeren.</div>`
+      : (e.description ? `<div class="perm-desc">${esc(e.description)}</div>` : "");
+    const note = hit ? `<div class="perm-note">Via <code>${esc(hit.wildcard)}</code>: ${hit.deny ? "verboden" : "toegestaan"}</div>` : "";
+    return `<div class="perm-row">
+      <div>${title}${desc}${note}</div>
+      <div class="seg" role="group" aria-label="Status van ${esc(e.node)}">
+        ${["ALLOW", "NONE", "DENY"].map(s => `<button type="button" data-node="${esc(e.node)}" data-s="${s}"
+          aria-pressed="${st === s}">${{ ALLOW: "Toegestaan", NONE: "Niet ingesteld", DENY: "Verboden" }[s]}</button>`).join("")}
+      </div></div>`;
+  }).join("");
+
+  pane.innerHTML = `
+    <h2 style="margin:0 0 .3rem;font-size:1.15rem">${esc(group.name)}${group.enabled ? "" : ' <span class="hint">(staat uit)</span>'}</h2>
+    <p class="hint" style="margin:0 0 1rem">Niet ingesteld betekent: de standaard van de plugin. Dat is meestal alleen voor OP.</p>
+    <div class="perm-tools">
+      <label class="sr-only" for="permSearch">Zoeken</label>
+      <input class="input" id="permSearch" placeholder="Zoek permissie of command" value="${esc(S.search)}">
+      <label class="check"><input type="checkbox" id="onlyCmd" ${S.onlyCmd ? "checked" : ""}> Alleen commands</label>
+    </div>
+    <div class="perm-tools">
+      <span class="hint">${entries.length} zichtbaar:</span>
+      <button class="btn btn-small" type="button" data-bulk="ALLOW">Alles toestaan</button>
+      <button class="btn btn-small" type="button" data-bulk="DENY">Alles verbieden</button>
+      <button class="btn btn-small" type="button" data-bulk="NONE">Alles resetten</button>
+    </div>
+    <div class="perm-rows">${rows || '<p class="empty" style="padding:1.5rem 0">Niets gevonden. Pas je zoekopdracht aan.</p>'}</div>`;
+}
+
+// ---------- spelers
+
+function renderPlayers(role) {
+  if (role.isDefault) {
+    $("#tabBody").innerHTML = '<p class="empty">Iedere speler heeft deze rol automatisch. Geef extra rollen via een andere rol.</p>';
+    return;
+  }
+  const members = [...role.members].sort((a, b) => (b.online - a.online) || a.name.localeCompare(b.name));
+  const suggestions = S.state.online.filter(n => !role.members.some(m => m.name === n));
+  $("#tabBody").innerHTML = `
+    <form class="player-add" id="playerAdd">
+      <label class="sr-only" for="playerName">Spelernaam</label>
+      <input class="input" id="playerName" placeholder="Spelernaam" list="onlineList" autocomplete="off" required>
+      <button class="btn btn-primary" type="submit">Rol geven</button>
+    </form>
+    <datalist id="onlineList">${suggestions.map(n => `<option value="${esc(n)}">`).join("")}</datalist>
+    <p class="hint">Spelers die nu online zijn verschijnen als suggestie. Offline spelers kun je toevoegen als ze al eens op de server zijn geweest.</p>
+    <ul class="player-list">${members.map(m => `
+      <li><span><span class="dot${m.online ? " on" : ""}" title="${m.online ? "Online" : "Offline"}"></span>${esc(m.name)}</span>
+        <button class="btn btn-small" type="button" data-kick="${esc(m.name)}">Rol afpakken</button></li>`).join("")
+      || '<li class="hint">Nog niemand heeft deze rol.</li>'}</ul>`;
+}
+
+// ------------------------------------------------------------------ events
+
+document.addEventListener("click", async (ev) => {
+  const t = ev.target.closest("button");
+  if (!t) return;
+  const role = currentRole();
+
+  if (t.dataset.role) {
+    S.role = t.dataset.role; S.form = null; S.search = "";
+    renderAll();
+  } else if (t.dataset.tab) {
+    S.tab = t.dataset.tab; renderMain();
+  } else if (t.id === "scanBtn") {
+    t.disabled = true;
+    try {
+      S.state = await api("rescan", {});
+      S.plugins = await api("plugins");
+      renderAll();
+      toast(`${S.plugins.groups.length} plugins gevonden.`);
+    } catch (e) { if (e.message !== "uitgelogd") toast(e.message, true); }
+    t.disabled = false;
+  } else if (t.dataset.color !== undefined && t.classList.contains("swatch")) {
+    S.form.nameColor = t.dataset.color;
+    document.querySelectorAll(".swatch").forEach(b => b.setAttribute("aria-pressed", b === t));
+    updateChatPreview(); refreshSaveState();
+  } else if (t.dataset.prio) {
+    const input = $("#fPrio");
+    input.value = Math.max(0, Math.min(999, Number(input.value || 0) + Number(t.dataset.prio)));
+    S.form.priority = Number(input.value); refreshSaveState();
+  } else if (t.id === "undoBtn") {
+    resetForm(role); renderMain();
+  } else if (t.id === "deleteBtn") {
+    if (confirm(`Rol "${role.name}" verwijderen? Spelers met deze rol verliezen hem.`)) {
+      await change("role/delete", { name: role.name }, `Rol ${role.name} verwijderd.`);
+    }
+  } else if (t.dataset.group) {
+    S.group = t.dataset.group; S.search = ""; renderPerms(role);
+  } else if (t.dataset.node && t.dataset.s) {
+    if (t.getAttribute("aria-pressed") === "true") return;
+    await change("role/perm", { role: role.name, node: t.dataset.node, state: t.dataset.s });
+  } else if (t.dataset.bulk) {
+    const group = S.plugins.groups.find(g => g.name === S.group);
+    const nodes = visibleEntries(group).map(e => e.node);
+    const label = { ALLOW: "toestaan", DENY: "verbieden", NONE: "resetten" }[t.dataset.bulk];
+    if (nodes.length && confirm(`${nodes.length} permissies ${label} voor ${role.name}?`)) {
+      await change("role/perms", { role: role.name, nodes, state: t.dataset.bulk }, `${nodes.length} permissies bijgewerkt.`);
+    }
+  } else if (t.dataset.remove) {
+    await change("role/perm", { role: role.name, node: t.dataset.remove, state: "NONE" }, "Permissie verwijderd.");
+  } else if (t.dataset.kick) {
+    await change("player/role", { role: role.name, player: t.dataset.kick, action: "remove" },
+      `${t.dataset.kick} heeft de rol ${role.name} niet meer.`);
+  }
+});
+
+document.addEventListener("input", (ev) => {
+  const t = ev.target;
+  if (t.id === "fPrefix") { S.form.prefix = t.value; schedulePreview(); refreshSaveState(); }
+  else if (t.id === "fSuffix") { S.form.suffix = t.value; schedulePreview(); refreshSaveState(); }
+  else if (t.id === "fPrio") { S.form.priority = Number(t.value || 0); refreshSaveState(); }
+  else if (t.id === "permSearch") {
+    S.search = t.value;
+    const pos = t.selectionStart;
+    renderPermPane(currentRole());
+    const again = $("#permSearch"); again.focus(); again.setSelectionRange(pos, pos);
+  } else if (t.id === "groupFilter") {
+    S.groupFilter = t.value;
+    const pos = t.selectionStart;
+    renderPerms(currentRole());
+    const again = $("#groupFilter"); again.focus(); again.setSelectionRange(pos, pos);
+  } else if (t.id === "onlyCmd") {
+    S.onlyCmd = t.checked; renderPermPane(currentRole());
+  }
+});
+
+document.addEventListener("submit", async (ev) => {
+  ev.preventDefault();
+  const f = ev.target;
+  const role = currentRole();
+
+  if (f.id === "newRoleForm") {
+    const input = $("#newRoleName");
+    const name = input.value.trim().toLowerCase();
+    if (await change("role/create", { name }, `Rol ${name} aangemaakt.`)) {
+      input.value = ""; S.role = name; S.form = null; S.tab = "settings"; renderAll();
+    }
+  } else if (f.id === "settingsForm") {
+    const ok = await change("role/update", {
+      name: role.name, prefix: S.form.prefix, suffix: S.form.suffix,
+      priority: Number(S.form.priority), nameColor: S.form.nameColor
+    }, "Wijzigingen opgeslagen.");
+    if (ok) { resetForm(currentRole()); renderMain(); }
+  } else if (f.id === "ownAdd") {
+    const node = $("#ownNode").value.trim().toLowerCase().replace(/^-/, "");
+    const state = ev.submitter?.dataset.state || "ALLOW";
+    if (node) await change("role/perm", { role: role.name, node, state },
+      state === "ALLOW" ? `${node} toegestaan.` : `${node} verboden.`);
+  } else if (f.id === "playerAdd") {
+    const player = $("#playerName").value.trim();
+    await change("player/role", { role: role.name, player, action: "add" }, `${player} heeft nu de rol ${role.name}.`);
+  }
+});
+
+// Spelers online/offline bijwerken als je terugkomt naar het tabblad
+window.addEventListener("focus", async () => {
+  try {
+    S.state = await api("state");
+    renderRoleList();
+    if (S.tab === "players") renderMain();
+  } catch { /* stil */ }
+});
+
+(async function init() {
+  try {
+    [S.state, S.plugins] = await Promise.all([api("state"), api("plugins")]);
+    renderAll();
+  } catch (e) {
+    if (e.message !== "uitgelogd") $("#main").innerHTML = `<p class="empty">${esc(e.message)}</p>`;
+  }
+})();
+</script>
+</body>
+</html>

@@ -1,0 +1,16 @@
+name: RolBeheer
+version: '${project.version}'
+main: nl.robin.rolbeheer.RolBeheer
+api-version: '1.21'
+description: Eenvoudig rollen, prefixes en permissies beheren
+author: Robin
+commands:
+  rol:
+    description: Rollen en permissies beheren
+    usage: /rol help
+    aliases: [rollen, rolbeheer]
+    permission: rolbeheer.admin
+permissions:
+  rolbeheer.admin:
+    description: Toegang tot /rol en het rollenmenu
+    default: op

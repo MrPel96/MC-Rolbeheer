@@ -1,0 +1,36 @@
+# ------------------------------------------------------------
+#  RolBeheer - instellingen
+#  Rollen zelf staan in roles.yml, spelers in players.yml.
+#  Na handmatig bewerken: /rol herlaad
+# ------------------------------------------------------------
+
+# Deze rol heeft iedere speler automatisch.
+standaard-rol: speler
+
+chat:
+  # Zet op false als een andere plugin (bijv. EssentialsChat) de chat al opmaakt.
+  ingeschakeld: true
+  # Beschikbaar: <prefix> <naam> <suffix> <bericht>  (MiniMessage-opmaak)
+  formaat: "<prefix><naam><suffix><dark_gray> » </dark_gray><white><bericht>"
+
+tablijst:
+  # Prefix en suffix tonen in de tablijst (TAB).
+  ingeschakeld: true
+
+naamlabel:
+  # Prefix en suffix tonen boven het hoofd van spelers.
+  ingeschakeld: true
+
+berichten:
+  geen-toegang-command: "<red>Je hebt geen toestemming om dit command te gebruiken."
+
+web:
+  # Webpaneel voor het beheren van rollen in je browser. Inloggen: /rol web
+  ingeschakeld: true
+  # 127.0.0.1 = alleen bereikbaar op de computer waar de server draait (veiligst).
+  # 0.0.0.0   = ook bereikbaar vanaf andere apparaten, bijv. als je server bij een host draait.
+  #             De poort moet dan open staan in je firewall/bij je host.
+  adres: 127.0.0.1
+  poort: 8765
+  # Adres dat in de inloglink komt. Bij een host: het IP-adres of de domeinnaam van je server.
+  publiek-adres: localhost
