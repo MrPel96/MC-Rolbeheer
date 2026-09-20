@@ -27,84 +27,100 @@ import java.util.Map;
  */
 public final class ServerSettings {
 
-    public enum Type { TEXT, NUMBER, BOOL, CHOICE }
+    public enum Type { TEXT, NUMBER, BOOL, CHOICE, COLORTEXT }
 
     /** Eén instelbare regel uit server.properties. */
     public record Setting(String key, String label, String description, Type type,
                           List<String> options, int min, int max, boolean restart) {}
 
     private static final List<Setting> SETTINGS = List.of(
-            new Setting("motd", "Servernaam in de serverlijst",
-                    "De tekst die spelers zien in hun serverlijst. Kleuren met §c werken hier.",
-                    Type.TEXT, List.of(), 0, 0, false),
-            new Setting("max-players", "Maximaal aantal spelers",
+            new Setting("motd", "MOTD",
+                    "De tekst die spelers zien in hun serverlijst. Maximaal twee regels.",
+                    Type.COLORTEXT, List.of(), 0, 0, false),
+            new Setting("max-players", "Max players",
                     "Hoeveel spelers tegelijk kunnen inloggen.", Type.NUMBER, List.of(), 1, 1000, false),
-            new Setting("difficulty", "Moeilijkheidsgraad",
-                    "Vreedzaam betekent geen vijandige mobs.", Type.CHOICE,
+            new Setting("difficulty", "Difficulty",
+                    "Peaceful betekent geen vijandige mobs.", Type.CHOICE,
                     List.of("peaceful", "easy", "normal", "hard"), 0, 0, false),
-            new Setting("pvp", "Spelers kunnen elkaar aanvallen",
+            new Setting("pvp", "PvP",
                     "Staat dit uit, dan doen spelers elkaar geen schade.", Type.BOOL, List.of(), 0, 0, false),
-            new Setting("gamemode", "Standaard spelmodus",
-                    "De spelmodus waarin nieuwe spelers beginnen.", Type.CHOICE,
+            new Setting("gamemode", "Standaard gamemode",
+                    "De gamemode waarin nieuwe spelers beginnen.", Type.CHOICE,
                     List.of("survival", "creative", "adventure", "spectator"), 0, 0, false),
-            new Setting("force-gamemode", "Spelmodus afdwingen",
-                    "Zet spelers bij elke login terug in de standaard spelmodus.", Type.BOOL, List.of(), 0, 0, true),
-            new Setting("allow-flight", "Vliegen toestaan",
+            new Setting("force-gamemode", "Force gamemode",
+                    "Zet spelers bij elke login terug in de standaard gamemode.", Type.BOOL, List.of(), 0, 0, true),
+            new Setting("allow-flight", "Allow flight",
                     "Nodig voor vlieg-plugins. Staat dit uit, dan schopt de server vliegende spelers eruit.",
                     Type.BOOL, List.of(), 0, 0, true),
             new Setting("hardcore", "Hardcore",
-                    "Spelers die doodgaan worden toeschouwer en kunnen niet meer meespelen.",
+                    "Spelers die doodgaan worden spectator en kunnen niet meer meespelen.",
                     Type.BOOL, List.of(), 0, 0, true),
-            new Setting("view-distance", "Kijkafstand",
+            new Setting("view-distance", "View distance",
                     "Hoeveel chunks spelers zien. Lager is minder zwaar voor de server.",
                     Type.NUMBER, List.of(), 2, 32, false),
-            new Setting("simulation-distance", "Simulatieafstand",
+            new Setting("simulation-distance", "Simulation distance",
                     "Tot hoe ver mobs en redstone actief blijven. Lager is minder zwaar.",
                     Type.NUMBER, List.of(), 2, 32, false),
-            new Setting("spawn-protection", "Beschermd gebied rond spawn",
+            new Setting("spawn-protection", "Spawn protection",
                     "Straal in blokken waarbinnen alleen OP's mogen bouwen. 0 zet het uit.",
                     Type.NUMBER, List.of(), 0, 1000, true),
-            new Setting("enable-command-block", "Commandblokken toestaan",
+            new Setting("enable-command-block", "Command blocks",
                     "Nodig als je met commandblokken wilt bouwen.", Type.BOOL, List.of(), 0, 0, true),
-            new Setting("player-idle-timeout", "Spelers eruit na inactiviteit",
+            new Setting("player-idle-timeout", "Idle timeout",
                     "Aantal minuten voordat een stilstaande speler eruit gaat. 0 zet het uit.",
                     Type.NUMBER, List.of(), 0, 1440, false),
-            new Setting("enforce-whitelist", "Witte lijst streng toepassen",
-                    "Schopt spelers die niet op de witte lijst staan er meteen uit.",
+            new Setting("enforce-whitelist", "Enforce whitelist",
+                    "Schopt spelers die niet op de whitelist staan er meteen uit.",
                     Type.BOOL, List.of(), 0, 0, false));
 
     /** Gameregels die je in de praktijk aanpast, met uitleg. */
     private static final Map<String, String[]> RULE_LABELS = new LinkedHashMap<>();
 
     static {
-        RULE_LABELS.put("keepInventory", new String[]{"Spullen behouden na de dood",
-                "Spelers verliezen hun inventaris niet als ze doodgaan."});
-        RULE_LABELS.put("doDaylightCycle", new String[]{"Dag- en nachtcyclus",
-                "Staat dit uit, dan blijft de tijd stilstaan."});
-        RULE_LABELS.put("doWeatherCycle", new String[]{"Weer verandert", "Staat dit uit, dan blijft het weer zoals het is."});
-        RULE_LABELS.put("doMobSpawning", new String[]{"Mobs verschijnen vanzelf", "Geldt voor dieren én monsters."});
-        RULE_LABELS.put("mobGriefing", new String[]{"Mobs mogen blokken kapotmaken",
-                "Creepers, endermen en ravagers laten je bouwwerken dan met rust."});
-        RULE_LABELS.put("doFireTick", new String[]{"Vuur verspreidt zich", "Uitzetten voorkomt afgebrande huizen."});
-        RULE_LABELS.put("fallDamage", new String[]{"Valschade", ""});
-        RULE_LABELS.put("fireDamage", new String[]{"Vuurschade", ""});
-        RULE_LABELS.put("drowningDamage", new String[]{"Verdrinkingsschade", ""});
-        RULE_LABELS.put("naturalRegeneration", new String[]{"Vanzelf hartjes bijkrijgen", ""});
-        RULE_LABELS.put("showDeathMessages", new String[]{"Doodsberichten in de chat", ""});
-        RULE_LABELS.put("announceAdvancements", new String[]{"Prestaties in de chat melden", ""});
-        RULE_LABELS.put("doImmediateRespawn", new String[]{"Meteen weer verschijnen",
-                "Slaat het scherm 'Je bent gestorven' over."});
-        RULE_LABELS.put("doInsomnia", new String[]{"Phantoms bij lang niet slapen", ""});
-        RULE_LABELS.put("doPatrolSpawning", new String[]{"Patrouilles van plunderaars", ""});
-        RULE_LABELS.put("doTraderSpawning", new String[]{"Zwervende handelaren", ""});
-        RULE_LABELS.put("doInsomnia", new String[]{"Phantoms bij lang niet slapen", ""});
-        RULE_LABELS.put("playersSleepingPercentage", new String[]{"Percentage slapers voor de ochtend",
+        RULE_LABELS.put("keepInventory", new String[]{"keepInventory",
+                "Spelers behouden hun spullen als ze doodgaan."});
+        RULE_LABELS.put("doDaylightCycle", new String[]{"doDaylightCycle",
+                "Dag- en nachtcyclus. Staat dit uit, dan blijft de tijd stilstaan."});
+        RULE_LABELS.put("doWeatherCycle", new String[]{"doWeatherCycle",
+                "Het weer verandert vanzelf."});
+        RULE_LABELS.put("doMobSpawning", new String[]{"doMobSpawning",
+                "Mobs verschijnen vanzelf. Geldt voor dieren én monsters."});
+        RULE_LABELS.put("mobGriefing", new String[]{"mobGriefing",
+                "Mobs mogen blokken kapotmaken. Uitzetten beschermt je bouwwerken tegen creepers en endermen."});
+        RULE_LABELS.put("doFireTick", new String[]{"doFireTick",
+                "Vuur verspreidt zich. Uitzetten voorkomt afgebrande huizen."});
+        RULE_LABELS.put("fallDamage", new String[]{"fallDamage",
+                "Valschade."});
+        RULE_LABELS.put("fireDamage", new String[]{"fireDamage",
+                "Vuurschade."});
+        RULE_LABELS.put("drowningDamage", new String[]{"drowningDamage",
+                "Verdrinkingsschade."});
+        RULE_LABELS.put("naturalRegeneration", new String[]{"naturalRegeneration",
+                "Spelers krijgen vanzelf hartjes terug."});
+        RULE_LABELS.put("showDeathMessages", new String[]{"showDeathMessages",
+                "Doodsberichten in de chat."});
+        RULE_LABELS.put("announceAdvancements", new String[]{"announceAdvancements",
+                "Advancements melden in de chat."});
+        RULE_LABELS.put("doImmediateRespawn", new String[]{"doImmediateRespawn",
+                "Meteen respawnen, zonder het scherm 'Je bent gestorven'."});
+        RULE_LABELS.put("doInsomnia", new String[]{"doInsomnia",
+                "Phantoms verschijnen als spelers lang niet slapen."});
+        RULE_LABELS.put("doPatrolSpawning", new String[]{"doPatrolSpawning",
+                "Patrouilles van pillagers."});
+        RULE_LABELS.put("doTraderSpawning", new String[]{"doTraderSpawning",
+                "Wandering traders verschijnen."});
+        RULE_LABELS.put("doInsomnia", new String[]{"doInsomnia",
+                "Phantoms verschijnen als spelers lang niet slapen."});
+        RULE_LABELS.put("playersSleepingPercentage", new String[]{"playersSleepingPercentage",
                 "Hoeveel procent van de spelers moet slapen om het dag te maken."});
-        RULE_LABELS.put("randomTickSpeed", new String[]{"Groeisnelheid van planten",
-                "Standaard 3. Hoger laat gewassen sneller groeien, maar kost prestaties."});
-        RULE_LABELS.put("spawnRadius", new String[]{"Spreiding rond het spawnpunt", ""});
-        RULE_LABELS.put("disableRaids", new String[]{"Raids uitschakelen", ""});
-        RULE_LABELS.put("doLimitedCrafting", new String[]{"Alleen recepten die je geleerd hebt", ""});
+        RULE_LABELS.put("randomTickSpeed", new String[]{"randomTickSpeed",
+                "Groeisnelheid van planten. Standaard 3; hoger kost prestaties."});
+        RULE_LABELS.put("spawnRadius", new String[]{"spawnRadius",
+                "Spreiding rond het spawnpunt."});
+        RULE_LABELS.put("disableRaids", new String[]{"disableRaids",
+                "Raids uitschakelen."});
+        RULE_LABELS.put("doLimitedCrafting", new String[]{"doLimitedCrafting",
+                "Alleen recepten craften die je geleerd hebt."});
     }
 
     private final RolBeheer plugin;
@@ -137,7 +153,12 @@ public final class ServerSettings {
                 String t = line.trim();
                 if (t.isEmpty() || t.startsWith("#")) continue;
                 int i = t.indexOf('=');
-                if (i > 0) values.put(t.substring(0, i).trim(), t.substring(i + 1).trim());
+                if (i > 0) {
+                    String key = t.substring(0, i).trim();
+                    String value = t.substring(i + 1).trim();
+                    if (key.equals("motd")) value = value.replace("\\n", "\n").replace('§', '&');
+                    values.put(key, value);
+                }
             }
         } catch (IOException e) {
             throw new ApiException("server.properties kon niet gelezen worden: " + e.getMessage());
@@ -146,7 +167,10 @@ public final class ServerSettings {
     }
 
     /** Schrijft één regel terug en laat de rest van het bestand met rust. */
-    public void writeProperty(String key, String value) {
+    public void writeProperty(String key, String rawValue) {
+        String value = key.equals("motd")
+                ? rawValue.replace('&', '§').replace("\n", "\\n")
+                : rawValue;
         Path path = file();
         try {
             List<String> lines = new ArrayList<>(Files.readAllLines(path, StandardCharsets.UTF_8));
@@ -170,7 +194,7 @@ public final class ServerSettings {
     public void applyLive(String key, String value) {
         List<World> worlds = Bukkit.getWorlds();
         switch (key) {
-            case "motd" -> Bukkit.getServer().motd(legacy(value));
+            case "motd" -> Bukkit.getServer().motd(legacy(value.replace("\\n", "\n")));
             case "max-players" -> Bukkit.getServer().setMaxPlayers(Integer.parseInt(value));
             case "difficulty" -> {
                 Difficulty d = Difficulty.valueOf(value.toUpperCase(Locale.ROOT));
@@ -187,7 +211,7 @@ public final class ServerSettings {
     }
 
     private static Component legacy(String value) {
-        return Text.parse(value.replace('§', '&'));
+        return Text.parse(value);
     }
 
     // ---------------------------------------------------------------- gameregels
@@ -250,6 +274,12 @@ public final class ServerSettings {
                 String v = value.toLowerCase(Locale.ROOT);
                 if (!setting.options().contains(v)) throw new ApiException("Ongeldige keuze.");
                 return v;
+            }
+            case COLORTEXT -> {
+                String text = value.replace("\r", "");
+                if (text.split("\n", -1).length > 2) throw new ApiException("De MOTD mag maximaal twee regels zijn.");
+                if (text.length() > 250) throw new ApiException("Deze tekst is te lang.");
+                return text;
             }
             default -> {
                 if (value.length() > 200) throw new ApiException("Deze tekst is te lang.");

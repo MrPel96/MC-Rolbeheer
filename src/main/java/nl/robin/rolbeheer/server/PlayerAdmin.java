@@ -79,12 +79,12 @@ public final class PlayerAdmin {
             case "whitelist-add" -> {
                 OfflinePlayer p = lookup(target);
                 p.setWhitelisted(true);
-                return name(p) + " staat nu op de witte lijst.";
+                return name(p) + " staat nu op de whitelist.";
             }
             case "whitelist-remove" -> {
                 OfflinePlayer p = lookup(target);
                 p.setWhitelisted(false);
-                return name(p) + " staat niet meer op de witte lijst.";
+                return name(p) + " staat niet meer op de whitelist.";
             }
             case "op" -> {
                 OfflinePlayer p = lookup(target);
@@ -132,8 +132,8 @@ public final class PlayerAdmin {
     public String setWhitelist(boolean on) {
         Bukkit.setWhitelist(on);
         if (on) Bukkit.reloadWhitelist();
-        return on ? "De witte lijst staat aan: alleen spelers op de lijst komen binnen."
-                : "De witte lijst staat uit: iedereen kan inloggen.";
+        return on ? "De whitelist staat aan: alleen spelers op de lijst komen binnen."
+                : "De whitelist staat uit: iedereen kan inloggen.";
     }
 
     private static OfflinePlayer lookup(String input) {

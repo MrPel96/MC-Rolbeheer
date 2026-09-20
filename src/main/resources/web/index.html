@@ -210,6 +210,19 @@ main { padding: 1.5rem 2rem 3rem; min-width: 0; }
   border-radius: var(--radius-s); max-width: 52rem; margin: 0 0 1.25rem;
 }
 
+/* ---------- MOTD-editor ---------- */
+.setting-row.wide { grid-template-columns: 1fr; }
+.motd-edit { display: grid; gap: .6rem; }
+.motd-toolbar { display: flex; flex-wrap: wrap; gap: .3rem; align-items: center; }
+.motd-toolbar .swatch { width: 1.6rem; height: 1.6rem; }
+#motdText { font-family: var(--pixel); font-size: 1.05rem; resize: vertical; }
+.motd-preview {
+  font-family: var(--pixel); font-size: 1.2rem; line-height: 1.45;
+  background: #0d0d0d; border: 1px solid var(--line); border-radius: var(--radius-s);
+  padding: .6rem .9rem; min-height: 3.6rem; text-shadow: 2px 2px 0 rgba(0,0,0,.6);
+  overflow-wrap: anywhere;
+}
+
 /* ---------- melding ---------- */
 .toast {
   position: fixed; bottom: 1.25rem; left: 50%; transform: translate(-50%, 1rem); opacity: 0;
@@ -284,9 +297,50 @@ const COLOR_LABELS = {
 const OWN = "__own";
 
 const CHOICE_LABELS = {
-  peaceful: "Vreedzaam", easy: "Makkelijk", normal: "Normaal", hard: "Moeilijk",
-  survival: "Overleven", creative: "Creatief", adventure: "Avontuur", spectator: "Toeschouwer"
+  peaceful: "Peaceful", easy: "Easy", normal: "Normal", hard: "Hard",
+  survival: "Survival", creative: "Creative", adventure: "Adventure", spectator: "Spectator"
 };
+
+// Minecraft-kleurcodes: code -> [kleur, naam]
+const MC_CODES = [
+  ["0", "#000000", "black"], ["1", "#0000AA", "dark blue"], ["2", "#00AA00", "dark green"],
+  ["3", "#00AAAA", "dark aqua"], ["4", "#AA0000", "dark red"], ["5", "#AA00AA", "dark purple"],
+  ["6", "#FFAA00", "gold"], ["7", "#AAAAAA", "gray"], ["8", "#555555", "dark gray"],
+  ["9", "#5555FF", "blue"], ["a", "#55FF55", "green"], ["b", "#55FFFF", "aqua"],
+  ["c", "#FF5555", "red"], ["d", "#FF55FF", "light purple"], ["e", "#FFFF55", "yellow"],
+  ["f", "#FFFFFF", "white"]
+];
+
+/** Tekst met &-codes omzetten naar gekleurde HTML, zoals Minecraft het toont. */
+function mcHtml(text) {
+  const colors = Object.fromEntries(MC_CODES.map(([c, hex]) => [c, hex]));
+  let out = "", style = { color: "#AAAAAA", bold: false, italic: false, under: false, strike: false };
+  const open = () => {
+    const d = [style.under ? "underline" : "", style.strike ? "line-through" : ""].filter(Boolean).join(" ");
+    return `<span style="color:${style.color};${style.bold ? "font-weight:700;" : ""}` +
+      `${style.italic ? "font-style:italic;" : ""}${d ? `text-decoration:${d};` : ""}">`;
+  };
+  out += open();
+  for (let i = 0; i < text.length; i++) {
+    const ch = text[i];
+    if ((ch === "&" || ch === "\u00a7") && i + 1 < text.length) {
+      const code = text[i + 1].toLowerCase();
+      if (colors[code]) { style = { color: colors[code], bold: false, italic: false, under: false, strike: false }; }
+      else if (code === "l") style.bold = true;
+      else if (code === "o") style.italic = true;
+      else if (code === "n") style.under = true;
+      else if (code === "m") style.strike = true;
+      else if (code === "r") style = { color: "#AAAAAA", bold: false, italic: false, under: false, strike: false };
+      else { out += esc(ch); continue; }
+      i++;
+      out += "</span>" + open();
+      continue;
+    }
+    if (ch === "\n") { out += "</span><br>" + open(); continue; }
+    out += esc(ch);
+  }
+  return out + "</span>";
+}
 
 const S = {
   view: "roles", server: null, serverTab: "props", update: null,
@@ -493,6 +547,29 @@ function renderUpdate() {
       eerstvolgende herstart. Je hoeft zelf geen bestanden te uploaden of te verwijderen.</p>`;
 }
 
+function motdEditor(p) {
+  const swatches = MC_CODES.map(([code, hex, name]) =>
+    `<button type="button" class="swatch" data-ins="&amp;${code}" style="background:${hex}"
+      title="${name} (&amp;${code})" aria-label="${name}"></button>`).join("");
+  return `<div class="motd-edit">
+    <div class="motd-toolbar">
+      ${swatches}
+      <button type="button" class="btn btn-small" data-ins="&amp;l" title="Vet"><b>B</b></button>
+      <button type="button" class="btn btn-small" data-ins="&amp;o" title="Cursief"><i>I</i></button>
+      <button type="button" class="btn btn-small" data-ins="&amp;n" title="Onderstreept"><u>U</u></button>
+      <button type="button" class="btn btn-small" data-ins="&amp;r" title="Opmaak stoppen">geen</button>
+    </div>
+    <label class="sr-only" for="motdText">MOTD</label>
+    <textarea class="input" id="motdText" rows="2" spellcheck="false">${esc(p.value)}</textarea>
+    <div class="motd-preview" id="motdPreview">${mcHtml(p.value)}</div>
+    <div class="actions">
+      <button class="btn btn-primary" type="button" id="saveMotd">MOTD opslaan</button>
+      <span class="hint">Klik een kleur om hem op de plek van je cursor te zetten. Alles daarna krijgt die kleur,
+        tot de volgende kleur of tot "geen".</span>
+    </div>
+  </div>`;
+}
+
 function propControl(p) {
   if (p.type === "BOOL") {
     const on = p.value === "true";
@@ -510,7 +587,12 @@ function propControl(p) {
 }
 
 function renderProps() {
-  const rows = S.server.properties.map(p => `
+  const rows = S.server.properties.map(p => p.type === "COLORTEXT" ? `
+    <div class="setting-row wide">
+      <div><div class="slabel">${esc(p.label)}</div>
+        ${p.description ? `<div class="sdesc">${esc(p.description)}</div>` : ""}</div>
+      ${motdEditor(p)}
+    </div>` : `
     <div class="setting-row">
       <div><div class="slabel">${esc(p.label)}${p.restart ? '<span class="badge">herstart nodig</span>' : ""}</div>
         ${p.description ? `<div class="sdesc">${esc(p.description)}</div>` : ""}</div>
@@ -557,7 +639,7 @@ function renderAccess() {
   $("#serverBody").innerHTML = `
     <div class="setting-rows" style="max-width:52rem">
       <div class="setting-row">
-        <div><div class="slabel">Witte lijst</div>
+        <div><div class="slabel">Whitelist</div>
           <div class="sdesc">Staat deze aan, dan kunnen alleen spelers van de lijst hieronder inloggen.</div></div>
         <div><label class="switch"><input type="checkbox" id="wlToggle" ${a.whitelistEnabled ? "checked" : ""}>
           <span>${a.whitelistEnabled ? "Aan" : "Uit"}</span></label></div>
@@ -565,33 +647,33 @@ function renderAccess() {
     </div>
     <div class="list-cols" style="margin-top:1.5rem">
       <div>
-        ${accessList("Op de witte lijst", a.whitelist, "whitelist-remove", "Verwijderen", "Nog niemand op de lijst.")}
+        ${accessList("Whitelist", a.whitelist, "whitelist-remove", "Verwijderen", "Nog niemand op de lijst.")}
         <form class="add-row" data-add="whitelist-add">
-          <label class="sr-only" for="wlName">Speler toevoegen aan witte lijst</label>
+          <label class="sr-only" for="wlName">Speler toevoegen aan whitelist</label>
           <input class="input" id="wlName" placeholder="Spelersnaam" list="onlineNames" autocomplete="off" required>
           <button class="btn btn-primary" type="submit">Toevoegen</button>
         </form>
       </div>
       <div>
-        ${accessList("Operators", a.ops, "deop", "Rechten afnemen", "Geen operators.")}
+        ${accessList("Operators (OP)", a.ops, "deop", "Deop", "Geen operators.")}
         <form class="add-row" data-add="op">
           <label class="sr-only" for="opName">Speler operator maken</label>
           <input class="input" id="opName" placeholder="Spelersnaam" list="onlineNames" autocomplete="off" required>
-          <button class="btn" type="submit">Operator maken</button>
+          <button class="btn" type="submit">Op maken</button>
         </form>
         <p class="hint">Een operator mag standaard alles, ook wat je in een rol op "Niet ingesteld" hebt staan.
           Gebruik liever een rol met de permissies die je wilt geven.</p>
       </div>
       <div>
-        ${accessList("Verbannen", a.bans, "unban", "Opheffen", "Niemand verbannen.")}
+        ${accessList("Bans", a.bans, "unban", "Unban", "Niemand verbannen.")}
         <form class="add-row" data-add="ban">
           <label class="sr-only" for="banName">Speler verbannen</label>
           <input class="input" id="banName" placeholder="Spelersnaam" autocomplete="off" required>
-          <button class="btn btn-danger" type="submit">Verbannen</button>
+          <button class="btn btn-danger" type="submit">Ban</button>
         </form>
       </div>
       <div>
-        ${accessList("Nu online", a.online.map(n => ({ name: n, detail: "" })), "kick", "Van server halen", "Niemand online.")}
+        ${accessList("Nu online", a.online.map(n => ({ name: n, detail: "" })), "kick", "Kick", "Niemand online.")}
       </div>
     </div>
     <datalist id="onlineNames">${a.online.map(n => `<option value="${esc(n)}">`).join("")}</datalist>`;
@@ -664,6 +746,18 @@ function formDirty(role) {
     || Number(f.priority) !== role.priority || f.nameColor !== role.nameColor;
 }
 
+/** Kleurenbalkje dat codes in een tekstveld plakt. */
+function colorBar(fieldId) {
+  const swatches = MC_CODES.map(([code, hex, name]) =>
+    `<button type="button" class="swatch" data-ins-for="${fieldId}" data-ins="&amp;${code}"
+      style="background:${hex}" title="${name} (&amp;${code})" aria-label="${name}"></button>`).join("");
+  return `<div class="motd-toolbar">${swatches}
+    <button type="button" class="btn btn-small" data-ins-for="${fieldId}" data-ins="&amp;l" title="Vet"><b>B</b></button>
+    <button type="button" class="btn btn-small" data-ins-for="${fieldId}" data-ins="&amp;o" title="Cursief"><i>I</i></button>
+    <button type="button" class="btn btn-small" data-ins-for="${fieldId}" data-ins="&amp;r" title="Opmaak stoppen">geen</button>
+  </div>`;
+}
+
 function renderSettings(role) {
   const f = S.form;
   const swatches = [`<button type="button" class="swatch swatch-none" data-color="" aria-pressed="${f.nameColor === ""}"
@@ -676,11 +770,14 @@ function renderSettings(role) {
     <form class="settings" id="settingsForm">
       <div class="field">
         <label for="fPrefix">Prefix</label>
+        ${colorBar("fPrefix")}
         <input class="input" id="fPrefix" value="${esc(f.prefix)}" autocomplete="off" placeholder="&c[Admin]">
-        <span class="hint">Kleuren met <code>&amp;c</code>, vet met <code>&amp;l</code>, of MiniMessage zoals <code>&lt;red&gt;</code> en <code>&lt;gradient:red:gold&gt;</code>.</span>
+        <span class="hint">Klik een kleur om hem bij je cursor te plakken. Je kunt ook MiniMessage typen,
+          zoals <code>&lt;gradient:red:gold&gt;</code>.</span>
       </div>
       <div class="field">
         <label for="fSuffix">Suffix</label>
+        ${colorBar("fSuffix")}
         <input class="input" id="fSuffix" value="${esc(f.suffix)}" autocomplete="off">
       </div>
       <div class="field">
@@ -866,6 +963,30 @@ document.addEventListener("click", async (ev) => {
     return;
   }
   if (t.dataset.stab) { S.serverTab = t.dataset.stab; renderServer(); return; }
+  if (t.dataset.ins !== undefined && t.dataset.insFor) {
+    const box = document.getElementById(t.dataset.insFor);
+    const code = t.dataset.ins;
+    const start = box.selectionStart ?? box.value.length;
+    box.value = box.value.slice(0, start) + code + box.value.slice(box.selectionEnd ?? start);
+    box.focus();
+    box.setSelectionRange(start + code.length, start + code.length);
+    box.dispatchEvent(new Event("input", { bubbles: true }));
+    return;
+  }
+  if (t.dataset.ins !== undefined && $("#motdText")) {
+    const box = $("#motdText");
+    const code = t.dataset.ins;
+    const start = box.selectionStart ?? box.value.length;
+    box.value = box.value.slice(0, start) + code + box.value.slice(box.selectionEnd ?? start);
+    box.focus();
+    box.setSelectionRange(start + code.length, start + code.length);
+    $("#motdPreview").innerHTML = mcHtml(box.value);
+    return;
+  }
+  if (t.id === "saveMotd") {
+    await serverChange("server/property", { key: "motd", value: $("#motdText").value }, "MOTD opgeslagen.");
+    return;
+  }
   if (t.id === "checkUpdate" || t.id === "installUpdate") {
     t.disabled = true;
     t.textContent = t.id === "checkUpdate" ? "Bezig met controleren…" : "Bezig met downloaden…";
@@ -963,6 +1084,8 @@ document.addEventListener("input", (ev) => {
     const pos = t.selectionStart;
     renderPerms(currentRole());
     const again = $("#groupFilter"); again.focus(); again.setSelectionRange(pos, pos);
+  } else if (t.id === "motdText") {
+    $("#motdPreview").innerHTML = mcHtml(t.value);
   } else if (t.id === "onlyCmd") {
     S.onlyCmd = t.checked; renderPermPane(currentRole());
   }

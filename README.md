@@ -1,10 +1,10 @@
-# RolBeheer 1.3.0
+# RolBeheer 1.4.0
 
 Eenvoudige rollen- en permissieplugin voor Paper.
 
 ## Bouwen
 **Zonder iets te installeren (GitHub):** zet deze map in een GitHub-repository. Bij elke push bouwt
-GitHub Actions de plugin. Download `RolBeheer-1.3.0.jar` onder *Actions → laatste run → Artifacts*.
+GitHub Actions de plugin. Download `RolBeheer-1.4.0.jar` onder *Actions → laatste run → Artifacts*.
 
 **Lokaal:** installeer JDK 21 en Maven, en voer `mvn package` uit. De jar staat in `target/`.
 Of open de map in IntelliJ IDEA en voer Maven → Lifecycle → package uit.
@@ -41,7 +41,7 @@ Het paneel heeft twee onderdelen, te kiezen rechtsboven:
 **Rollen** — rollen maken, prefix en naamkleur instellen, permissies per plugin regelen en spelers een rol geven.
 
 **Server** — instellingen die voorheen alleen via bestanden konden:
-- *Server*: servernaam, maximaal aantal spelers, moeilijkheidsgraad, PvP, spelmodus, kijkafstand, spawn-bescherming en meer. Dit past `server.properties` aan. Instellingen met het label "herstart nodig" werken pas na een herstart; de rest gaat meteen in.
+- *Server*: MOTD (met kleurknoppen en een live voorbeeld), maximaal aantal spelers, moeilijkheidsgraad, PvP, spelmodus, kijkafstand, spawn-bescherming en meer. Dit past `server.properties` aan. Instellingen met het label "herstart nodig" werken pas na een herstart; de rest gaat meteen in.
 - *Gameregels*: spullen behouden na de dood, dag-nachtcyclus, mobs die blokken slopen, vuur dat zich verspreidt, en zo verder. Per wereld, en meteen actief.
 - *Spelers en toegang*: witte lijst aan of uit en beheren, operators toekennen of afnemen, verbanningen opheffen en spelers van de server halen.
 
