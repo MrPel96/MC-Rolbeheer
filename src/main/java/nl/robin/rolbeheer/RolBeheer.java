@@ -8,6 +8,7 @@ import nl.robin.rolbeheer.listener.ServerListener;
 import nl.robin.rolbeheer.role.RoleManager;
 import nl.robin.rolbeheer.scan.PluginScanner;
 import nl.robin.rolbeheer.sync.PlayerSync;
+import nl.robin.rolbeheer.web.Updater;
 import nl.robin.rolbeheer.web.WebServer;
 import org.bukkit.Bukkit;
 import org.bukkit.command.PluginCommand;
@@ -24,6 +25,7 @@ public final class RolBeheer extends JavaPlugin {
     private PlayerSync sync;
     private ChatInput chatInput;
     private WebServer web;
+    private Updater updater;
 
     // Gecachte config-waarden (worden ook vanaf de async chat-thread gelezen)
     private volatile String chatFormat = DEFAULT_CHAT_FORMAT;
@@ -40,6 +42,7 @@ public final class RolBeheer extends JavaPlugin {
         scanner = new PluginScanner(this);
         sync = new PlayerSync(this);
         chatInput = new ChatInput(this);
+        updater = new Updater(this);
         web = new WebServer(this);
 
         PluginManager pm = getServer().getPluginManager();
@@ -71,6 +74,7 @@ public final class RolBeheer extends JavaPlugin {
     @Override
     public void onDisable() {
         if (web != null) web.stop();
+        if (updater != null) updater.applyStagedOnShutdown();
         if (sync != null) sync.shutdown();
         if (roles != null) roles.save();
     }
@@ -104,6 +108,10 @@ public final class RolBeheer extends JavaPlugin {
     public PlayerSync sync() { return sync; }
     public ChatInput chatInput() { return chatInput; }
     public WebServer web() { return web; }
+    public Updater updater() { return updater; }
+
+    /** Het jar-bestand van deze plugin; nodig om een update te kunnen installeren. */
+    public java.io.File jarFile() { return getFile(); }
     public String chatFormat() { return chatFormat; }
     public boolean chatEnabled() { return chatEnabled; }
     public String noAccessMessage() { return noAccessMessage; }

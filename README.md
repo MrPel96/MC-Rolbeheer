@@ -1,10 +1,10 @@
-# RolBeheer 1.2.0
+# RolBeheer 1.3.0
 
 Eenvoudige rollen- en permissieplugin voor Paper.
 
 ## Bouwen
 **Zonder iets te installeren (GitHub):** zet deze map in een GitHub-repository. Bij elke push bouwt
-GitHub Actions de plugin. Download `RolBeheer-1.2.0.jar` onder *Actions → laatste run → Artifacts*.
+GitHub Actions de plugin. Download `RolBeheer-1.3.0.jar` onder *Actions → laatste run → Artifacts*.
 
 **Lokaal:** installeer JDK 21 en Maven, en voer `mvn package` uit. De jar staat in `target/`.
 Of open de map in IntelliJ IDEA en voer Maven → Lifecycle → package uit.
@@ -46,6 +46,32 @@ Het paneel heeft twee onderdelen, te kiezen rechtsboven:
 - *Spelers en toegang*: witte lijst aan of uit en beheren, operators toekennen of afnemen, verbanningen opheffen en spelers van de server halen.
 
 Instellingen in `bukkit.yml`, `spigot.yml` en `paper.yml` zitten er bewust niet in. Daar staan honderden technische opties die je server ook echt kapot kunnen configureren.
+
+## Updaten
+Vanaf versie 1.3.0 gaat updaten via het paneel: tabblad **Server → Updates**. Daar staat welke versie
+je draait, of er een nieuwere op GitHub staat, en een knop om die klaar te zetten. Bij de eerstvolgende
+herstart wisselt de plugin zichzelf om en verwijdert hij de oude jar.
+
+Eenmalig instellen in `config.yml`:
+
+```yaml
+updates:
+  repo: "jouwnaam/rolbeheer"
+  token: ""
+```
+
+Staat je repository op privé, dan hoort daar een token bij. Die maak je zo:
+
+1. Op GitHub: klik op je profielfoto, **Settings**.
+2. Helemaal onderaan links: **Developer settings**.
+3. **Personal access tokens → Fine-grained tokens → Generate new token**.
+4. Bij *Repository access*: **Only select repositories**, en kies je rolbeheer-repo.
+5. Bij *Permissions → Repository permissions*: zet **Contents** op **Read-only**.
+6. Genereer de token, kopieer hem en plak hem tussen de aanhalingstekens bij `token`.
+
+De token geeft alleen leesrechten op dat ene project. Deel `config.yml` verder met niemand.
+
+De workflow maakt bij elke push automatisch een release met de jar erin, en daar kijkt de plugin naar.
 
 ## Rollen en OP
 Een operator (OP) mag standaard alles. Staat een permissie in een rol op "Niet ingesteld", dan geldt

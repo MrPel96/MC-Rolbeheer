@@ -165,6 +165,19 @@ public final class WebServer {
             }
         }
 
+        // Updates praten met GitHub; dat mag de server niet ophouden, dus niet op de hoofdthread.
+        if (route.equals("update") || route.startsWith("update/")) {
+            try {
+                json(ex, 200, plugin.updater().handle(method, route, req));
+            } catch (ApiException e) {
+                json(ex, 400, error(e.getMessage()));
+            } catch (RuntimeException e) {
+                plugin.getLogger().warning("Update-fout: " + e);
+                json(ex, 500, error("Er ging iets mis. Kijk in de console."));
+            }
+            return;
+        }
+
         JsonObject finalReq = req;
         try {
             JsonElement result = Bukkit.getScheduler()

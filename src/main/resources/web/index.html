@@ -289,7 +289,7 @@ const CHOICE_LABELS = {
 };
 
 const S = {
-  view: "roles", server: null, serverTab: "props",
+  view: "roles", server: null, serverTab: "props", update: null,
   state: null, plugins: null, role: null, tab: "settings",
   group: OWN, search: "", onlyCmd: false, groupFilter: "",
   form: null, previewPrefix: "", previewSuffix: ""
@@ -434,12 +434,63 @@ function renderServer() {
     <section class="role-head"><h1>Serverinstellingen</h1>
       <p class="role-meta">Wijzigingen worden meteen opgeslagen.</p></section>
     <div class="tabs" role="tablist">
-      ${tab("props", "Server")}${tab("rules", "Gameregels")}${tab("access", "Spelers en toegang")}
+      ${tab("props", "Server")}${tab("rules", "Gameregels")}${tab("access", "Spelers en toegang")}${tab("update", "Updates")}
     </div>
     <section id="serverBody" role="tabpanel"></section>`;
   if (S.serverTab === "props") renderProps();
   else if (S.serverTab === "rules") renderRules();
+  else if (S.serverTab === "update") renderUpdate();
   else renderAccess();
+}
+
+async function loadUpdate(action) {
+  try {
+    S.update = action ? await api("update/" + action, {}) : await api("update");
+    renderUpdate();
+    if (S.update.message) toast(S.update.message);
+  } catch (e) {
+    if (e.message !== "uitgelogd") { toast(e.message, true); renderUpdate(); }
+  }
+}
+
+function renderUpdate() {
+  const u = S.update;
+  const body = $("#serverBody");
+  if (!body) return;
+  if (!u) {
+    body.innerHTML = '<p class="empty">Laden…</p>';
+    loadUpdate(null);
+    return;
+  }
+  const staged = u.staged
+    ? `<p class="warn"><strong>Klaargezet.</strong> De nieuwe versie wordt geïnstalleerd zodra je de server
+       herstart. Dat doe je in het paneel van je hosting.</p>` : "";
+  const repoLine = u.repo
+    ? `<div class="setting-row"><div><div class="slabel">Repository</div>
+        <div class="sdesc">Hier wordt naar nieuwe versies gezocht.</div></div>
+       <div><code>${esc(u.repo)}</code>${u.privateRepo ? ' <span class="detail">met token</span>' : ""}</div></div>`
+    : `<p class="warn">Vul eerst <code>updates.repo</code> in <code>config.yml</code> in, bijvoorbeeld
+       <code>jouwnaam/rolbeheer</code>. Bij een privé-repository hoort daar ook een token bij.</p>`;
+
+  body.innerHTML = `
+    ${staged}
+    <div class="setting-rows" style="max-width:52rem">
+      <div class="setting-row"><div><div class="slabel">Geïnstalleerde versie</div></div>
+        <div><strong>${esc(u.current)}</strong></div></div>
+      ${repoLine}
+      <div class="setting-row">
+        <div><div class="slabel">Nieuwste versie op GitHub</div>
+          <div class="sdesc">${u.latest ? (u.available ? "Er is een nieuwere versie beschikbaar."
+            : "Je bent bij: dit is dezelfde versie als je nu draait.") : "Nog niet gecontroleerd."}</div></div>
+        <div>${u.latest ? `<strong${u.available ? ' style="color:var(--allow)"' : ""}>${esc(u.latest)}</strong>` : "—"}</div>
+      </div>
+    </div>
+    <div class="actions" style="margin-top:1.25rem">
+      <button class="btn" type="button" id="checkUpdate">Controleren op updates</button>
+      ${u.available ? '<button class="btn btn-primary" type="button" id="installUpdate">Update klaarzetten</button>' : ""}
+    </div>
+    <p class="hint" style="margin-top:1rem">De plugin downloadt de nieuwe versie en wisselt hem om bij de
+      eerstvolgende herstart. Je hoeft zelf geen bestanden te uploaden of te verwijderen.</p>`;
 }
 
 function propControl(p) {
@@ -815,6 +866,12 @@ document.addEventListener("click", async (ev) => {
     return;
   }
   if (t.dataset.stab) { S.serverTab = t.dataset.stab; renderServer(); return; }
+  if (t.id === "checkUpdate" || t.id === "installUpdate") {
+    t.disabled = true;
+    t.textContent = t.id === "checkUpdate" ? "Bezig met controleren…" : "Bezig met downloaden…";
+    await loadUpdate(t.id === "checkUpdate" ? "check" : "install");
+    return;
+  }
   if (t.dataset.access) {
     const player = t.dataset.player;
     const action = t.dataset.access;

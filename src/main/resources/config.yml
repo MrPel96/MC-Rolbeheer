@@ -34,3 +34,10 @@ web:
   poort: 8765
   # Adres dat in de inloglink komt. Bij een host: het IP-adres of de domeinnaam van je server.
   publiek-adres: localhost
+
+updates:
+  # Waar de plugin naar nieuwe versies zoekt. Vul je GitHub-repository in, bijv. jouwnaam/rolbeheer.
+  repo: ""
+  # Alleen nodig bij een privé-repository: een GitHub-token met leesrechten op Contents.
+  # Maak er een aan via github.com > Settings > Developer settings > Personal access tokens.
+  token: ""
