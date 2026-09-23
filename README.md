@@ -1,15 +1,27 @@
-# RolBeheer 1.8.1
+# The Blueprint 2.0.0
 
-Eenvoudige rollen- en permissieplugin voor Paper.
+Rollen, permissies, spelerscommands en serverbeheer voor Paper, met een webpaneel.
+
+Heette tot versie 1.10.0 RolBeheer. De permissies blijven `rolbeheer.*` heten, zodat bestaande rollen
+gewoon blijven werken.
 
 ## Bouwen
 **Zonder iets te installeren (GitHub):** zet deze map in een GitHub-repository. Bij elke push bouwt
-GitHub Actions de plugin. Download `RolBeheer-1.8.1.jar` onder *Actions → laatste run → Artifacts*.
+GitHub Actions de plugin. Download `TheBlueprint-2.0.0.jar` onder *Actions → laatste run → Artifacts*.
 
 **Lokaal:** installeer JDK 21 en Maven, en voer `mvn package` uit. De jar staat in `target/`.
 Of open de map in IntelliJ IDEA en voer Maven → Lifecycle → package uit.
 
 Serverversie anders dan 1.21.4? Pas `paper.version` aan in `pom.xml`.
+
+## Upgraden vanaf RolBeheer
+1. Zet de server uit en verwijder de oude `RolBeheer-*.jar` uit `plugins/`.
+2. Zet `TheBlueprint-2.0.0.jar` erin en start de server.
+3. De plugin neemt bij de eerste start alles over uit `plugins/RolBeheer`: je config, rollen, spelers,
+   homes, warps, kits en statistieken. In de console zie je hoeveel bestanden zijn overgenomen.
+4. Werkt alles, dan mag de map `plugins/RolBeheer` weg.
+
+De naam in het paneel pas je aan met `weergavenaam` in `config.yml`.
 
 ## Installeren
 1. Verwijder je oude rollenplugins (LuckPerms, GroupManager, enz.). Twee rollenplugins tegelijk werken niet goed.
@@ -26,6 +38,9 @@ Serverversie anders dan 1.21.4? Pas `paper.version` aan in `pom.xml`.
 - Nieuwe plugins worden automatisch herkend bij het laden. Handmatig kan met `/rol herlaad`.
 
 ## Webpaneel
+Het paneel opent op het **Overzicht**: wie er online is, welke rollen er zijn, de ranglijst van doden
+en de belangrijkste instellingen in één blik. Daarnaast staan de tabbladen Rollen en Server.
+
 Typ `/rol web` in de game of console. Je krijgt een link die één keer werkt en 5 minuten geldig is.
 Daarna blijf je 12 uur ingelogd in die browser.
 
@@ -148,6 +163,30 @@ een OP ook niet mag, zet het dan op **Verboden**: een expliciet verbod wint van 
 
 Handiger is om jezelf de rol `admin` te geven (die heeft `*`) en je OP-status weg te halen met
 `/deop <naam>`. Dan test je onder dezelfde regels als je spelers.
+
+## Berichten, tablijst en scorebord
+Alles in het paneel onder Server → Berichten en tab.
+
+- **Join- en vertrekberichten**, met een apart bericht voor wie voor het eerst inlogt, en welkomstregels
+  die alleen die speler zelf ziet. Leeg laten betekent: geen bericht.
+- **Tablijst**: een kop- en voettekst boven en onder de spelerslijst, meerdere regels mag.
+- **Scorebord**: een ranglijst rechts in beeld op doden of kills, met instelbare titel en lengte.
+
+In al die teksten kun je deze invullingen gebruiken: `<naam>`, `<prefix>`, `<suffix>`, `<rol>`,
+`<spelers>`, `<max>`, `<doden>` en `<kills>`. Kleuren met `&c` of MiniMessage.
+
+### Dodenteller
+De plugin telt hoe vaak iemand doodgaat en hoeveel spelers hij verslaat.
+
+- `/stats [speler]` (ook als `/doden`) laat de stand van één speler zien.
+- `/top [doden|kills]` geeft de ranglijst in de chat.
+- Permissie: `rolbeheer.stats`, standaard voor iedereen.
+- De cijfers staan in `stats.yml` en zijn in het paneel op nul te zetten.
+
+### Naampje in berichten
+Meldingen van de plugin beginnen standaard met `[RolBeheer]`. Dat pas je aan in het paneel bij
+Server → Commands, of in `config.yml` bij `berichten.prefix`. Kleuren met `&`-codes of MiniMessage.
+Laat je het leeg, dan verschijnt er helemaal geen naampje.
 
 ## Bestanden
 - `config.yml`: standaardrol, chatformaat, tab/naamlabel aan/uit

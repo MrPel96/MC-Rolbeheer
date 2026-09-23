@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>RolBeheer</title>
+<title>The Blueprint</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Chivo:wght@400;500;700&family=Pixelify+Sans:wght@400;600&display=swap" rel="stylesheet">
@@ -196,7 +196,7 @@ main { padding: 1.5rem 2rem 3rem; min-width: 0; }
 }
 .switch { display: inline-flex; align-items: center; gap: .5rem; }
 .num { width: 8rem; }
-.list-cols { display: grid; grid-template-columns: repeat(auto-fit, minmax(16rem, 1fr)); gap: 1.5rem; max-width: 60rem; }
+.list-cols { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(16rem, 100%), 1fr)); gap: 1.5rem; max-width: 60rem; }
 .mini-list { list-style: none; margin: .5rem 0 0; padding: 0; border-top: 1px solid var(--line); }
 .mini-list li {
   display: flex; justify-content: space-between; align-items: center; gap: .75rem;
@@ -229,6 +229,24 @@ main { padding: 1.5rem 2rem 3rem; min-width: 0; }
 }
 .cmd-toggle { display: flex; align-items: center; gap: .45rem; }
 
+/* ---------- startscherm ---------- */
+.stat-row { display: flex; flex-wrap: wrap; gap: .75rem; margin-bottom: 1.5rem; }
+.stat {
+  background: var(--panel); border: 1px solid var(--line); border-radius: var(--radius-m);
+  padding: .8rem 1.1rem; display: grid; gap: .1rem; min-width: 7.5rem;
+}
+.stat .big { font-family: var(--pixel); font-size: 1.9rem; line-height: 1; color: var(--gold); }
+.stat .of { font-size: 1rem; color: var(--muted); }
+.stat span:last-child { color: var(--muted); font-size: .85rem; }
+.cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(20rem, 100%), 1fr)); gap: 1rem; align-items: start; }
+.card {
+  background: var(--panel); border: 1px solid var(--line); border-radius: var(--radius-m); padding: 1rem 1.1rem;
+}
+.card h2 { margin: 0 0 .4rem; font-size: 1rem; }
+.card .mini-list { border-top: 0; }
+.card .mini-list li:last-child { border-bottom: 0; }
+.card .btn { margin-top: .6rem; }
+
 /* ---------- melding ---------- */
 .toast {
   position: fixed; bottom: 1.25rem; left: 50%; transform: translate(-50%, 1rem); opacity: 0;
@@ -242,7 +260,9 @@ main { padding: 1.5rem 2rem 3rem; min-width: 0; }
 @media (max-width: 860px) {
   .layout { grid-template-columns: minmax(0, 1fr); }
   .sidebar { border-right: 0; border-bottom: 1px solid var(--line); min-width: 0; }
-  .bar { padding: .6rem 1rem; }
+  .bar { padding: .6rem 1rem; flex-wrap: wrap; row-gap: .4rem; }
+  .brand { font-size: 1.15rem; }
+  .viewnav button { padding: .3rem .55rem; font-size: .85rem; }
   .bar-info { display: none; }
   #scanBtn { padding: .35rem .6rem; font-size: .85rem; }
   .role-list { grid-auto-flow: column; grid-auto-columns: max-content; overflow-x: auto; }
@@ -257,10 +277,11 @@ main { padding: 1.5rem 2rem 3rem; min-width: 0; }
 </head>
 <body>
 <header class="bar">
-  <div class="brand">Rol<span>Beheer</span></div>
+  <div class="brand" id="brand">The <span>Blueprint</span></div>
   <div class="actions">
     <nav class="viewnav" aria-label="Onderdelen">
-      <button type="button" data-view="roles" aria-current="true">Rollen</button>
+      <button type="button" data-view="overview" aria-current="true">Overzicht</button>
+      <button type="button" data-view="roles" aria-current="false">Rollen</button>
       <button type="button" data-view="server" aria-current="false">Server</button>
     </nav>
     <span class="bar-info" id="onlineInfo"></span>
@@ -349,7 +370,7 @@ function mcHtml(text) {
 }
 
 const S = {
-  view: "roles", server: null, serverTab: "props", update: null, spelers: null,
+  view: "overview", overview: null, server: null, serverTab: "props", update: null, spelers: null, berichten: null,
   state: null, plugins: null, role: null, tab: "settings",
   group: OWN, search: "", onlyCmd: false, groupFilter: "",
   form: null, previewPrefix: "", previewSuffix: ""
@@ -455,11 +476,87 @@ function renderAll() {
   $("#onlineInfo").textContent = n === 1 ? "1 speler online" : `${n} spelers online`;
   document.querySelectorAll(".viewnav button").forEach(b =>
     b.setAttribute("aria-current", String(b.dataset.view === S.view)));
-  $("#layout").classList.toggle("server", S.view === "server");
-  $("#scanBtn").hidden = S.view === "server";
+  $("#layout").classList.toggle("server", S.view !== "roles");
+  $("#scanBtn").hidden = S.view !== "roles";
   if (S.view === "server") { renderServer(); return; }
+  if (S.view === "overview") { renderOverview(); return; }
   renderRoleList();
   renderMain();
+}
+
+// ------------------------------------------------------------------ startscherm
+
+async function openOverview() {
+  S.view = "overview";
+  renderAll();
+  try {
+    S.overview = await api("overzicht");
+    renderOverview();
+  } catch (e) {
+    if (e.message !== "uitgelogd") $("#main").innerHTML = `<p class="empty">${esc(e.message)}</p>`;
+  }
+}
+
+function card(title, body, action) {
+  return `<section class="card"><h2>${esc(title)}</h2>${body}${action || ""}</section>`;
+}
+
+function renderOverview() {
+  const main = $("#main");
+  const d = S.overview;
+  if (!d) { main.innerHTML = '<p class="empty">Laden…</p>'; return; }
+  document.title = d.name;
+  const brand = d.name.split(" ");
+  $("#brand").innerHTML = brand.length > 1
+    ? `${esc(brand.slice(0, -1).join(" "))} <span>${esc(brand[brand.length - 1])}</span>`
+    : `<span>${esc(d.name)}</span>`;
+
+  const uptime = d.uptimeMinutes < 60
+    ? `${d.uptimeMinutes} min`
+    : `${Math.floor(d.uptimeMinutes / 60)} uur ${d.uptimeMinutes % 60} min`;
+
+  const players = d.players.length
+    ? `<ul class="mini-list">${d.players.map(p => `
+        <li><span><span class="dot on"></span>${p.prefixHtml} ${esc(p.name)}</span>
+          <span class="detail">${esc(p.role)}</span></li>`).join("")}</ul>`
+    : '<p class="hint">Er is nu niemand online.</p>';
+
+  const roles = `<ul class="mini-list">${d.roles.map(r => `
+      <li><span>${r.prefixHtml} <strong>${esc(r.name)}</strong></span>
+        <span class="detail">${r.members < 0 ? "iedereen" : r.members + " spelers"} · ${r.permissions} permissies</span></li>`).join("")}</ul>`;
+
+  const top = d.top.length
+    ? `<ul class="mini-list">${d.top.map((t, i) => `
+        <li><span>${i + 1}. ${esc(t.name)}</span>
+          <span class="detail">${t.deaths} doden · ${t.kills} kills</span></li>`).join("")}</ul>`
+    : '<p class="hint">Nog niets bijgehouden.</p>';
+
+  main.innerHTML = `
+    <section class="role-head">
+      <h1>${esc(d.name)}</h1>
+      <p class="role-meta">Versie ${esc(d.version)} · Minecraft ${esc(d.serverVersion)} · ${d.plugins} plugins ·
+        server draait ${uptime}</p>
+    </section>
+
+    <div class="stat-row">
+      <div class="stat"><span class="big">${d.online}<span class="of">/${d.maxPlayers}</span></span><span>online</span></div>
+      <div class="stat"><span class="big">${d.roles.length}</span><span>rollen</span></div>
+      <div class="stat"><span class="big">${d.warps}</span><span>warps</span></div>
+      <div class="stat"><span class="big">${d.kits}</span><span>kits</span></div>
+      <div class="stat"><span class="big">${d.scanned}</span><span>plugins gescand</span></div>
+    </div>
+
+    <div class="cards">
+      ${card("Nu online", players, '<button class="btn btn-small" type="button" data-goto="roles">Rollen beheren</button>')}
+      ${card("Rollen", roles, '<button class="btn btn-small" type="button" data-goto="roles">Openen</button>')}
+      ${card("Vaakst doodgegaan", top, '<button class="btn btn-small" type="button" data-goto="berichten">Instellen</button>')}
+      ${card("Instellingen", `<ul class="mini-list">
+        <li><span>Spelerscommands</span><span class="detail">${d.commandsOn ? "aan" : "uit"}</span></li>
+        <li><span>Spawnpunt</span><span class="detail">${d.spawnSet ? "gezet" : "niet gezet"}</span></li>
+        <li><span>Spawnbescherming</span><span class="detail">${d.protection ? "aan" : "uit"}</span></li>
+        <li><span>Whitelist</span><span class="detail">${d.whitelist ? "aan" : "uit"}</span></li>
+      </ul>`, '<button class="btn btn-small" type="button" data-goto="commands">Openen</button>')}
+    </div>`;
 }
 
 // ------------------------------------------------------------------ serverweergave
@@ -494,13 +591,14 @@ function renderServer() {
     <section class="role-head"><h1>Serverinstellingen</h1>
       <p class="role-meta">Wijzigingen worden meteen opgeslagen.</p></section>
     <div class="tabs" role="tablist">
-      ${tab("props", "Server")}${tab("rules", "Gameregels")}${tab("access", "Spelers en toegang")}${tab("commands", "Commands")}${tab("update", "Updates")}
+      ${tab("props", "Server")}${tab("rules", "Gameregels")}${tab("access", "Spelers en toegang")}${tab("commands", "Commands")}${tab("berichten", "Berichten en tab")}${tab("update", "Updates")}
     </div>
     <section id="serverBody" role="tabpanel"></section>`;
   if (S.serverTab === "props") renderProps();
   else if (S.serverTab === "rules") renderRules();
   else if (S.serverTab === "update") renderUpdate();
   else if (S.serverTab === "commands") renderSpelers();
+  else if (S.serverTab === "berichten") renderBerichten();
   else renderAccess();
 }
 
@@ -580,6 +678,17 @@ function renderSpelers() {
         <div><label class="switch"><input type="checkbox" data-sp="spawn-eerste-join" ${d.spawnFirstJoin ? "checked" : ""}>
           <span>${d.spawnFirstJoin ? "Aan" : "Uit"}</span></label></div>
       </div>
+      <div class="setting-row wide">
+        <div><div class="slabel">Naampje in berichten van de plugin</div>
+          <div class="sdesc">Dit staat voor meldingen als "Home opgeslagen". Leeg laten mag ook.</div></div>
+        <div class="motd-edit">
+          ${colorBar("chatPrefix")}
+          <input class="input" id="chatPrefix" value="${esc(d.chatPrefix)}" autocomplete="off"
+            placeholder="&amp;8[&amp;6Server&amp;8]">
+          <div class="motd-preview" id="chatPrefixPreview" style="min-height:0">${d.chatPrefixHtml} <span style="color:#AAAAAA">Home opgeslagen.</span></div>
+          <div class="actions"><button class="btn btn-primary" type="button" id="saveChatPrefix">Opslaan</button></div>
+        </div>
+      </div>
       <div class="setting-row">
         <div><div class="slabel">Spawnbescherming</div>
           <div class="sdesc">Binnen dit gebied kan niemand bouwen, slopen of dingen opblazen.
@@ -625,6 +734,93 @@ function renderSpelers() {
       <div><h2 style="margin:0;font-size:1.05rem">Warps</h2><ul class="mini-list">${warps}</ul></div>
       <div><h2 style="margin:0;font-size:1.05rem">Kits</h2><ul class="mini-list">${kits}</ul>
         <p class="hint">Het getal is de wachttijd in seconden. Wijzig het en klik ernaast om op te slaan.</p></div>
+    </div>`;
+}
+
+async function loadBerichten(body, okText) {
+  try {
+    S.berichten = body ? await api(body.path, body.data) : await api("berichten");
+    renderBerichten();
+    if (S.berichten.message || okText) toast(S.berichten.message || okText);
+  } catch (e) {
+    if (e.message !== "uitgelogd") { toast(e.message, true); renderBerichten(); }
+  }
+}
+
+function textField(id, label, hint, value, rows) {
+  const input = rows > 1
+    ? `<textarea class="input" id="${id}" rows="${rows}" spellcheck="false">${esc(value)}</textarea>`
+    : `<input class="input" id="${id}" value="${esc(value)}" autocomplete="off">`;
+  return `<div class="field" style="margin-bottom:1.1rem">
+    <label for="${id}">${esc(label)}</label>
+    ${input}
+    ${hint ? `<span class="hint">${hint}</span>` : ""}
+    <div class="actions"><button class="btn btn-small btn-primary" type="button" data-msg-save="${id}">Opslaan</button></div>
+  </div>`;
+}
+
+function renderBerichten() {
+  const body = $("#serverBody");
+  if (!body) return;
+  const d = S.berichten;
+  if (!d) { body.innerHTML = '<p class="empty">Laden…</p>'; loadBerichten(null); return; }
+
+  const placeholders = 'Beschikbaar: <code>&lt;naam&gt;</code> <code>&lt;prefix&gt;</code> ' +
+    '<code>&lt;rol&gt;</code> <code>&lt;spelers&gt;</code> <code>&lt;max&gt;</code> ' +
+    '<code>&lt;doden&gt;</code> <code>&lt;kills&gt;</code>. Kleuren met <code>&amp;c</code> of <code>&lt;gold&gt;</code>.';
+
+  const ranking = d.top.length ? `<ul class="mini-list">${d.top.map((t, i) => `
+      <li><span>${i + 1}. ${esc(t.name)}</span>
+        <span class="detail">${t.deaths} doden · ${t.kills} kills</span></li>`).join("")}</ul>`
+    : '<p class="hint">Nog niets bijgehouden.</p>';
+
+  body.innerHTML = `
+    <p class="warn">${placeholders}</p>
+    <div style="max-width:40rem">
+      <h2 style="margin:0 0 .8rem;font-size:1.05rem">Bij binnenkomen en weggaan</h2>
+      ${textField("bJoin", "Bericht als iemand binnenkomt", "Leeg laten = geen bericht.", d.join, 1)}
+      ${textField("bVertrek", "Bericht als iemand weggaat", "", d.vertrek, 1)}
+      ${textField("bEerste", "Bericht bij de allereerste keer", "", d.eersteJoin, 1)}
+      ${textField("bWelkom", "Welkomstregels voor de speler zelf", "Eén regel per zin.", d.welkom, 3)}
+
+      <h2 style="margin:1.5rem 0 .8rem;font-size:1.05rem">Tablijst</h2>
+      <div class="setting-rows"><div class="setting-row">
+        <div><div class="slabel">Prefix en kop- en voettekst tonen</div></div>
+        <div><label class="switch"><input type="checkbox" data-msg-toggle="tablijst-aan" ${d.tablijst ? "checked" : ""}>
+          <span>${d.tablijst ? "Aan" : "Uit"}</span></label></div>
+      </div></div>
+      <div style="margin-top:1rem">
+        ${textField("bKop", "Tekst boven de spelerslijst", "Eén regel per zin.", d.koptekst, 3)}
+        ${textField("bVoet", "Tekst onder de spelerslijst", "", d.voettekst, 2)}
+      </div>
+
+      <h2 style="margin:1.5rem 0 .8rem;font-size:1.05rem">Scorebord aan de zijkant</h2>
+      <div class="setting-rows">
+        <div class="setting-row">
+          <div><div class="slabel">Ranglijst tonen</div>
+            <div class="sdesc">Verschijnt rechts in beeld bij alle spelers.</div></div>
+          <div><label class="switch"><input type="checkbox" data-msg-toggle="scorebord-aan" ${d.scorebord ? "checked" : ""}>
+            <span>${d.scorebord ? "Aan" : "Uit"}</span></label></div>
+        </div>
+        <div class="setting-row">
+          <div><div class="slabel">Waarop ranken</div></div>
+          <div><select class="input" data-msg-select="scorebord-soort">
+            <option value="doden" ${d.scorebordSoort === "doden" ? "selected" : ""}>Doden</option>
+            <option value="kills" ${d.scorebordSoort === "kills" ? "selected" : ""}>Kills</option>
+          </select></div>
+        </div>
+        <div class="setting-row">
+          <div><div class="slabel">Aantal spelers op de lijst</div></div>
+          <div><input class="input num" type="number" min="1" max="10" value="${d.scorebordAantal}" data-msg-number="scorebord-aantal"></div>
+        </div>
+      </div>
+      <div style="margin-top:1rem">${textField("bTitel", "Titel boven het scorebord", "", d.scorebordTitel, 1)}</div>
+
+      <h2 style="margin:1.5rem 0 .5rem;font-size:1.05rem">Stand</h2>
+      ${ranking}
+      <div class="actions" style="margin-top:.8rem">
+        <button class="btn btn-danger" type="button" id="resetStats">Alle tellers op nul zetten</button>
+      </div>
     </div>`;
 }
 
@@ -1089,8 +1285,14 @@ document.addEventListener("click", async (ev) => {
   const role = currentRole();
 
   if (t.dataset.view) {
-    if (t.dataset.view === "server") { await openServer(); }
+    if (t.dataset.view === "server") await openServer();
+    else if (t.dataset.view === "overview") await openOverview();
     else { S.view = "roles"; renderAll(); }
+    return;
+  }
+  if (t.dataset.goto) {
+    if (t.dataset.goto === "roles") { S.view = "roles"; renderAll(); }
+    else { S.serverTab = t.dataset.goto; await openServer(); }
     return;
   }
   if (t.dataset.stab) { S.serverTab = t.dataset.stab; renderServer(); return; }
@@ -1112,6 +1314,23 @@ document.addEventListener("click", async (ev) => {
     box.focus();
     box.setSelectionRange(start + code.length, start + code.length);
     $("#motdPreview").innerHTML = mcHtml(box.value);
+    return;
+  }
+  if (t.dataset.msgSave) {
+    const map = { bJoin: "join", bVertrek: "vertrek", bEerste: "eerste-join", bWelkom: "welkom",
+      bKop: "koptekst", bVoet: "voettekst", bTitel: "scorebord-titel" };
+    const key = map[t.dataset.msgSave];
+    await loadBerichten({ path: "berichten/opslaan", data: { key, value: $("#" + t.dataset.msgSave).value } });
+    return;
+  }
+  if (t.id === "resetStats") {
+    if (confirm("Alle doden en kills op nul zetten? Dit kun je niet terugdraaien.")) {
+      await loadBerichten({ path: "stats/reset", data: {} });
+    }
+    return;
+  }
+  if (t.id === "saveChatPrefix") {
+    await loadSpelers("spelers/instelling", { key: "chat-prefix", value: $("#chatPrefix").value });
     return;
   }
   if (t.id === "saveMotd") {
@@ -1215,6 +1434,12 @@ document.addEventListener("change", async (ev) => {
     await loadSpelers("spelers/instelling", { key: t.dataset.sp, value });
   } else if (t.dataset.cmd) {
     await loadSpelers("spelers/commando", { name: t.dataset.cmd, enabled: t.checked });
+  } else if (t.dataset.msgToggle) {
+    await loadBerichten({ path: "berichten/opslaan", data: { key: t.dataset.msgToggle, value: t.checked } });
+  } else if (t.dataset.msgSelect) {
+    await loadBerichten({ path: "berichten/opslaan", data: { key: t.dataset.msgSelect, value: t.value } });
+  } else if (t.dataset.msgNumber) {
+    await loadBerichten({ path: "berichten/opslaan", data: { key: t.dataset.msgNumber, value: Number(t.value) } });
   } else if (t.dataset.kitCd) {
     await loadSpelers("spelers/kit", { name: t.dataset.kitCd, value: Number(t.value) });
   } else if (t.id === "wlToggle") {
@@ -1240,6 +1465,8 @@ document.addEventListener("input", (ev) => {
     const pos = t.selectionStart;
     renderPerms(currentRole());
     const again = $("#groupFilter"); again.focus(); again.setSelectionRange(pos, pos);
+  } else if (t.id === "chatPrefix") {
+    $("#chatPrefixPreview").innerHTML = mcHtml(t.value) + ' <span style="color:#AAAAAA">Home opgeslagen.</span>';
   } else if (t.id === "motdText") {
     $("#motdPreview").innerHTML = mcHtml(t.value);
   } else if (t.id === "onlyCmd") {
@@ -1293,7 +1520,7 @@ window.addEventListener("focus", async () => {
 
 (async function init() {
   try {
-    [S.state, S.plugins] = await Promise.all([api("state"), api("plugins")]);
+    [S.state, S.plugins, S.overview] = await Promise.all([api("state"), api("plugins"), api("overzicht")]);
     renderAll();
   } catch (e) {
     if (e.message !== "uitgelogd") $("#main").innerHTML = `<p class="empty">${esc(e.message)}</p>`;

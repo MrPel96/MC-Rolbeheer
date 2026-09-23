@@ -15,7 +15,14 @@ import java.util.Map;
 public final class Text {
 
     public static final MiniMessage MM = MiniMessage.miniMessage();
-    private static final String PREFIX = "<dark_gray>[<gold>RolBeheer</gold>]</dark_gray> <gray>";
+    public static final String DEFAULT_PREFIX = "<dark_gray>[<gold>Blueprint</gold>]</dark_gray>";
+
+    /** Het naampje voor berichten van de plugin; in te stellen in config.yml. */
+    private static volatile Component prefix = MM.deserialize(DEFAULT_PREFIX);
+
+    public static void setPrefix(String raw) {
+        prefix = raw == null || raw.isBlank() ? Component.empty() : parse(raw);
+    }
 
     private Text() {}
 
@@ -39,7 +46,7 @@ public final class Text {
             Map.entry('r', "reset"));
 
     /** &c en §c worden <red>, zodat beide schrijfwijzen samen kunnen bestaan. */
-    private static String codesToTags(String input) {
+    public static String codesToTags(String input) {
         StringBuilder out = new StringBuilder(input.length() + 16);
         for (int i = 0; i < input.length(); i++) {
             char c = input.charAt(i);
@@ -61,7 +68,10 @@ public final class Text {
     }
 
     public static void send(CommandSender to, String mini, TagResolver... resolvers) {
-        to.sendMessage(MM.deserialize(PREFIX + mini, resolvers));
+        Component body = MM.deserialize("<gray>" + mini, resolvers);
+        to.sendMessage(prefix == Component.empty() || plain(prefix).isEmpty()
+                ? body
+                : Component.textOfChildren(prefix, Component.space(), body));
     }
 
     /** Tekst voor itemnamen/lore (zonder de standaard cursieve opmaak). */

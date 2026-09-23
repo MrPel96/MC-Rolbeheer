@@ -141,7 +141,7 @@ public final class Updater {
         }
 
         Path staging = plugin.getDataFolder().toPath().resolve("update");
-        Path target = staging.resolve("RolBeheer-" + latestVersion + ".jar");
+        Path target = staging.resolve("TheBlueprint-" + latestVersion + ".jar");
         try {
             Files.createDirectories(staging);
             HttpResponse<InputStream> res = http.send(auth(HttpRequest.newBuilder()
@@ -166,7 +166,7 @@ public final class Updater {
             } catch (IOException ignored) {
                 // niets aan te doen
             }
-            throw new ApiException("Het gedownloade bestand is geen geldige RolBeheer-plugin.");
+            throw new ApiException("Het gedownloade bestand is geen geldige plugin van The Blueprint.");
         }
 
         plugin.getLogger().info("[Update] versie " + latestVersion + " staat klaar: " + target);
@@ -213,7 +213,7 @@ public final class Updater {
             plugin.getLogger().info("[Update] " + destination.getFileName() + " geïnstalleerd; oude versie verwijderd.");
         } catch (IOException e) {
             plugin.getLogger().warning("[Update] installeren mislukt: " + e.getMessage()
-                    + ". Zet het bestand uit plugins/RolBeheer/update/ zelf in de plugins-map.");
+                    + ". Zet het bestand uit plugins/TheBlueprint/update/ zelf in de plugins-map.");
         }
     }
 
@@ -234,7 +234,7 @@ public final class Updater {
     private HttpRequest.Builder auth(HttpRequest.Builder builder) {
         String token = token();
         if (!token.isEmpty()) builder.header("Authorization", "Bearer " + token);
-        return builder.header("User-Agent", "RolBeheer");
+        return builder.header("User-Agent", "TheBlueprint");
     }
 
     private static String text(JsonObject o, String key) {

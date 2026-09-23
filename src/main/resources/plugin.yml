@@ -1,14 +1,14 @@
-name: RolBeheer
+name: TheBlueprint
 version: '${project.version}'
 main: nl.robin.rolbeheer.RolBeheer
 api-version: '1.21'
-description: Eenvoudig rollen, prefixes en permissies beheren
+description: Rollen, permissies, spelerscommands en serverbeheer in een webpaneel
 author: Robin
 commands:
   rol:
     description: Rollen en permissies beheren
     usage: /rol help
-    aliases: [rollen, rolbeheer]
+    aliases: [rollen, rolbeheer, blueprint, bp]
     permission: rolbeheer.admin
   home:
     description: Ga naar je home
@@ -95,6 +95,16 @@ commands:
     usage: /r <bericht>
     permission: rolbeheer.msg
 
+  stats:
+    description: Laat zien hoe vaak iemand doodging
+    usage: /stats [speler]
+    permission: rolbeheer.stats
+    aliases: [doden]
+  top:
+    description: Ranglijst van doden of kills
+    usage: /top [doden|kills]
+    permission: rolbeheer.stats
+
 permissions:
   rolbeheer.admin:
     description: Toegang tot /rol en het rollenmenu
@@ -135,6 +145,9 @@ permissions:
   rolbeheer.spawnbescherming.bypass:
     description: Mag bouwen en vechten binnen het beschermde spawngebied
     default: op
+  rolbeheer.stats:
+    description: /stats en /top gebruiken
+    default: true
   rolbeheer.msg:
     description: Prive-berichten sturen met /msg en /r
     default: true

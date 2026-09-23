@@ -34,10 +34,26 @@ public final class PlayerListener implements Listener {
         Player player = event.getPlayer();
         plugin.roles().updateName(player.getUniqueId(), player.getName());
         plugin.sync().apply(player);
+
+        // Bericht voor iedereen, en de welkomstregels voor de speler zelf.
+        String template = player.hasPlayedBefore()
+                ? plugin.getConfig().getString("berichten.join", "")
+                : plugin.getConfig().getString("berichten.eerste-join",
+                        plugin.getConfig().getString("berichten.join", ""));
+        event.joinMessage(template == null || template.isBlank()
+                ? null : plugin.boards().render(template, player));
+
+        for (String line : plugin.getConfig().getStringList("berichten.welkom")) {
+            player.sendMessage(plugin.boards().render(line, player));
+        }
+        plugin.boards().updateTab(player);
     }
 
     @EventHandler(priority = EventPriority.MONITOR)
     public void onQuit(PlayerQuitEvent event) {
+        String template = plugin.getConfig().getString("berichten.vertrek", "");
+        event.quitMessage(template == null || template.isBlank()
+                ? null : plugin.boards().render(template, event.getPlayer()));
         plugin.sync().remove(event.getPlayer());
     }
 
@@ -78,12 +94,19 @@ public final class PlayerListener implements Listener {
         if (spawn != null) event.setRespawnLocation(spawn);
     }
 
-    /** Onthoudt waar je stierf, zodat /back daarheen terugbrengt. */
+    /** Onthoudt waar je stierf en telt de dood mee voor de ranglijst. */
     @EventHandler(priority = EventPriority.MONITOR)
     public void onDeath(PlayerDeathEvent event) {
+        Player victim = event.getEntity();
         if (plugin.playerCommands() != null) {
-            plugin.playerCommands().rememberBack(event.getEntity(), event.getEntity().getLocation());
+            plugin.playerCommands().rememberBack(victim, victim.getLocation());
         }
+        plugin.stats().addDeath(victim.getUniqueId(), victim.getName());
+        Player killer = victim.getKiller();
+        if (killer != null && !killer.equals(victim)) {
+            plugin.stats().addKill(killer.getUniqueId(), killer.getName());
+        }
+        plugin.boards().updateSidebar();
     }
 
     /** Blokkeert commands zonder eigen permissie als een rol ze verbiedt. */

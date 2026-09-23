@@ -45,6 +45,8 @@ public final class WebApi {
                 case "plugins" -> plugins();
                 case "server" -> server(null);
                 case "spelers" -> spelers(null);
+                case "berichten" -> berichten(null);
+                case "overzicht" -> overzicht();
                 default -> throw new ApiException("Onbekende actie.");
             };
         }
@@ -99,6 +101,11 @@ public final class WebApi {
                         plugin.getConfig().set("commands.spawn.bescherming." + path,
                                 req.has("value") && req.get("value").getAsBoolean());
                     }
+                    case "chat-prefix" -> {
+                        String value = str(req, "value").trim();
+                        if (value.length() > 100) throw new ApiException("Deze tekst is te lang.");
+                        plugin.getConfig().set("berichten.prefix", value);
+                    }
                     case "bescherming-straal" -> plugin.getConfig().set("commands.spawn.bescherming.straal",
                             Math.max(1, Math.min(500, number(req))));
                     default -> throw new ApiException("Onbekende instelling.");
@@ -107,6 +114,47 @@ public final class WebApi {
                 plugin.refreshSettings();
                 log("spelerscommands: " + key + " gewijzigd");
                 return spelers(key.equals("ingeschakeld") ? "Opgeslagen. Herstart de server om dit toe te passen." : null);
+            }
+            case "berichten/opslaan" -> {
+                String key = str(req, "key");
+                String path = switch (key) {
+                    case "join" -> "berichten.join";
+                    case "vertrek" -> "berichten.vertrek";
+                    case "eerste-join" -> "berichten.eerste-join";
+                    case "welkom" -> "berichten.welkom";
+                    case "koptekst" -> "tablijst.koptekst";
+                    case "voettekst" -> "tablijst.voettekst";
+                    case "scorebord-titel" -> "scorebord.titel";
+                    case "scorebord-soort" -> "scorebord.soort";
+                    case "scorebord-aantal" -> "scorebord.aantal";
+                    case "scorebord-aan" -> "scorebord.ingeschakeld";
+                    case "tablijst-aan" -> "tablijst.ingeschakeld";
+                    default -> throw new ApiException("Onbekende instelling.");
+                };
+                switch (key) {
+                    case "welkom", "koptekst", "voettekst" -> plugin.getConfig().set(path, lines(req));
+                    case "scorebord-aantal" -> plugin.getConfig().set(path, Math.max(1, Math.min(10, number(req))));
+                    case "scorebord-aan", "tablijst-aan" ->
+                            plugin.getConfig().set(path, req.has("value") && req.get("value").getAsBoolean());
+                    case "scorebord-soort" -> plugin.getConfig().set(path,
+                            str(req, "value").equalsIgnoreCase("kills") ? "kills" : "doden");
+                    default -> {
+                        String value = str(req, "value");
+                        if (value.length() > 300) throw new ApiException("Deze tekst is te lang.");
+                        plugin.getConfig().set(path, value);
+                    }
+                }
+                plugin.saveConfig();
+                plugin.refreshSettings();
+                if (plugin.boards() != null) plugin.boards().updateAll();
+                log("bericht/tablijst: " + key + " gewijzigd");
+                return berichten("Opgeslagen.");
+            }
+            case "stats/reset" -> {
+                plugin.stats().resetAll();
+                if (plugin.boards() != null) plugin.boards().updateSidebar();
+                log("statistieken gewist");
+                return berichten("De tellers staan weer op nul.");
             }
             case "spelers/import" -> {
                 if (plugin.essentialsImport() == null) throw new ApiException("De spelerscommands staan uit.");
@@ -323,6 +371,9 @@ public final class WebApi {
         o.addProperty("protectionPvp", plugin.getConfig().getBoolean("commands.spawn.bescherming.geen-pvp", true));
         o.addProperty("protectionMobs", plugin.getConfig().getBoolean("commands.spawn.bescherming.geen-mobschade", true));
         o.addProperty("protectionInteract", plugin.getConfig().getBoolean("commands.spawn.bescherming.geen-interactie", false));
+        String chatPrefix = plugin.getConfig().getString("berichten.prefix", Text.DEFAULT_PREFIX);
+        o.addProperty("chatPrefix", chatPrefix);
+        o.addProperty("chatPrefixHtml", ComponentHtml.toHtml(Text.parse(chatPrefix)));
 
         java.util.List<String> off = plugin.getConfig().getStringList("commands.uitgeschakeld");
         JsonArray commands = new JsonArray();
@@ -367,6 +418,102 @@ public final class WebApi {
         o.add("kits", kits);
         if (spawn != null) o.add("spawn", spawn);
         return o;
+    }
+
+    /** Startscherm: een samenvatting van de server, de rollen en de commands. */
+    private JsonObject overzicht() {
+        JsonObject o = new JsonObject();
+        o.addProperty("name", plugin.displayName());
+        o.addProperty("version", plugin.getPluginMeta().getVersion());
+        o.addProperty("serverVersion", Bukkit.getMinecraftVersion());
+        o.addProperty("online", Bukkit.getOnlinePlayers().size());
+        o.addProperty("maxPlayers", Bukkit.getMaxPlayers());
+        o.addProperty("uptimeMinutes", (System.currentTimeMillis() - plugin.startedAt()) / 60000);
+        o.addProperty("plugins", Bukkit.getPluginManager().getPlugins().length);
+
+        JsonArray players = new JsonArray();
+        for (Player p : Bukkit.getOnlinePlayers()) {
+            JsonObject j = new JsonObject();
+            j.addProperty("name", p.getName());
+            java.util.List<Role> roles = plugin.roles().getEffectiveRoles(p.getUniqueId());
+            Role role = roles.isEmpty() ? null : roles.get(0);
+            j.addProperty("role", role == null ? "" : role.getName());
+            j.addProperty("prefixHtml", role == null ? "" : ComponentHtml.toHtml(Text.parse(role.getPrefix())));
+            players.add(j);
+        }
+        o.add("players", players);
+
+        JsonArray roles = new JsonArray();
+        for (Role r : plugin.roles().getRoles()) {
+            JsonObject j = new JsonObject();
+            j.addProperty("name", r.getName());
+            j.addProperty("priority", r.getPriority());
+            j.addProperty("prefixHtml", ComponentHtml.toHtml(Text.parse(r.getPrefix())));
+            j.addProperty("permissions", r.getPermissions().size());
+            j.addProperty("members", r.getName().equals(plugin.roles().defaultRoleName())
+                    ? -1 : plugin.roles().getMembers(r.getName()).size());
+            roles.add(j);
+        }
+        o.add("roles", roles);
+
+        JsonArray top = new JsonArray();
+        if (plugin.stats() != null) {
+            for (var entry : plugin.stats().top(false, 5)) {
+                JsonObject j = new JsonObject();
+                j.addProperty("name", entry.name());
+                j.addProperty("deaths", entry.deaths());
+                j.addProperty("kills", entry.kills());
+                top.add(j);
+            }
+        }
+        o.add("top", top);
+
+        o.addProperty("commandsOn", plugin.store() != null);
+        o.addProperty("warps", plugin.store() == null ? 0 : plugin.store().warpNames().size());
+        o.addProperty("kits", plugin.store() == null ? 0 : plugin.store().kitNames().size());
+        o.addProperty("spawnSet", plugin.store() != null && plugin.store().spawn() != null);
+        o.addProperty("protection", plugin.getConfig().getBoolean("commands.spawn.bescherming.ingeschakeld", false));
+        o.addProperty("whitelist", Bukkit.hasWhitelist());
+        o.addProperty("scanned", plugin.scanner().groups().size());
+        return o;
+    }
+
+    private JsonObject berichten(String message) {
+        JsonObject o = new JsonObject();
+        if (message != null) o.addProperty("message", message);
+        o.addProperty("join", plugin.getConfig().getString("berichten.join", ""));
+        o.addProperty("vertrek", plugin.getConfig().getString("berichten.vertrek", ""));
+        o.addProperty("eersteJoin", plugin.getConfig().getString("berichten.eerste-join", ""));
+        o.addProperty("welkom", String.join("\n", plugin.getConfig().getStringList("berichten.welkom")));
+        o.addProperty("tablijst", plugin.getConfig().getBoolean("tablijst.ingeschakeld", true));
+        o.addProperty("koptekst", String.join("\n", plugin.getConfig().getStringList("tablijst.koptekst")));
+        o.addProperty("voettekst", String.join("\n", plugin.getConfig().getStringList("tablijst.voettekst")));
+        o.addProperty("scorebord", plugin.getConfig().getBoolean("scorebord.ingeschakeld", false));
+        o.addProperty("scorebordTitel", plugin.getConfig().getString("scorebord.titel", ""));
+        o.addProperty("scorebordSoort", plugin.getConfig().getString("scorebord.soort", "doden"));
+        o.addProperty("scorebordAantal", plugin.getConfig().getInt("scorebord.aantal", 5));
+
+        JsonArray top = new JsonArray();
+        if (plugin.stats() != null) {
+            boolean kills = plugin.getConfig().getString("scorebord.soort", "doden").equalsIgnoreCase("kills");
+            for (var entry : plugin.stats().top(kills, 10)) {
+                JsonObject j = new JsonObject();
+                j.addProperty("name", entry.name());
+                j.addProperty("deaths", entry.deaths());
+                j.addProperty("kills", entry.kills());
+                top.add(j);
+            }
+        }
+        o.add("top", top);
+        return o;
+    }
+
+    private static java.util.List<String> lines(JsonObject req) {
+        String value = str(req, "value").replace("\r", "");
+        java.util.List<String> out = new java.util.ArrayList<>();
+        for (String line : value.split("\n")) if (!line.isBlank() || !out.isEmpty()) out.add(line);
+        while (!out.isEmpty() && out.get(out.size() - 1).isBlank()) out.remove(out.size() - 1);
+        return out;
     }
 
     private static int number(JsonObject req) {

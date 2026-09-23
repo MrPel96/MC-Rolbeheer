@@ -11,7 +11,10 @@ import nl.robin.rolbeheer.sync.PlayerSync;
 import nl.robin.rolbeheer.spelers.EssentialsImport;
 import nl.robin.rolbeheer.spelers.ForwardExecutor;
 import nl.robin.rolbeheer.spelers.PlayerCommands;
+import nl.robin.rolbeheer.spelers.Boards;
 import nl.robin.rolbeheer.spelers.SpawnProtection;
+import nl.robin.rolbeheer.spelers.Stats;
+import nl.robin.rolbeheer.spelers.StatsCommands;
 import nl.robin.rolbeheer.spelers.Store;
 import nl.robin.rolbeheer.web.Updater;
 import nl.robin.rolbeheer.web.WebServer;
@@ -35,14 +38,19 @@ public final class RolBeheer extends JavaPlugin {
     private PlayerCommands playerCommands;
     private EssentialsImport essentialsImport;
     private SpawnProtection spawnProtection;
+    private Stats stats;
+    private Boards boards;
 
     // Gecachte config-waarden (worden ook vanaf de async chat-thread gelezen)
     private volatile String chatFormat = DEFAULT_CHAT_FORMAT;
     private volatile boolean chatEnabled = true;
     private volatile String noAccessMessage = "<red>Geen toegang.";
 
+    private final long startedAt = System.currentTimeMillis();
+
     @Override
     public void onEnable() {
+        migrateOldFolder();
         saveDefaultConfig();
         cacheConfig();
 
@@ -93,6 +101,18 @@ public final class RolBeheer extends JavaPlugin {
                     + ". De rollen en het webpaneel werken gewoon.");
         }
 
+        stats = new Stats(this);
+        boards = new Boards(this, stats);
+        StatsCommands statsCommands = new StatsCommands(this, stats);
+        for (String name : new String[]{"stats", "top"}) {
+            PluginCommand sc = getCommand(name);
+            if (sc != null) {
+                sc.setExecutor(statsCommands);
+                sc.setTabCompleter(statsCommands);
+            }
+        }
+        boards.start();
+
         RolCommand command = new RolCommand(this);
         PluginCommand pc = getCommand("rol");
         if (pc != null) {
@@ -115,6 +135,8 @@ public final class RolBeheer extends JavaPlugin {
 
     @Override
     public void onDisable() {
+        if (boards != null) boards.stop();
+        if (stats != null) stats.saveIfNeeded();
         if (web != null) web.stop();
         if (updater != null) updater.applyStagedOnShutdown();
         if (sync != null) sync.shutdown();
@@ -129,6 +151,7 @@ public final class RolBeheer extends JavaPlugin {
         scanner.rescan();
         sync.applyAll();
         if (spawnProtection != null) spawnProtection.refresh();
+        if (boards != null) boards.updateAll();
         web.stop();
         web.start();
     }
@@ -139,7 +162,40 @@ public final class RolBeheer extends JavaPlugin {
         sync.applyAll();
     }
 
+    /** Neemt de instellingen over uit de oude map plugins/RolBeheer. */
+    private void migrateOldFolder() {
+        java.io.File newFolder = getDataFolder();
+        java.io.File oldFolder = new java.io.File(newFolder.getParentFile(), "RolBeheer");
+        if (!oldFolder.isDirectory() || new java.io.File(newFolder, "config.yml").isFile()) return;
+        newFolder.mkdirs();
+        java.io.File[] files = oldFolder.listFiles();
+        if (files == null) return;
+        int copied = 0;
+        for (java.io.File file : files) {
+            if (!file.isFile() || !file.getName().endsWith(".yml")) continue;
+            try {
+                java.nio.file.Files.copy(file.toPath(), new java.io.File(newFolder, file.getName()).toPath(),
+                        java.nio.file.StandardCopyOption.REPLACE_EXISTING);
+                copied++;
+            } catch (java.io.IOException e) {
+                getLogger().warning("Kon " + file.getName() + " niet overnemen: " + e.getMessage());
+            }
+        }
+        if (copied > 0) {
+            getLogger().info(copied + " bestanden overgenomen uit plugins/RolBeheer. "
+                    + "Die map mag je verwijderen zodra alles goed werkt.");
+        }
+    }
+
+    public long startedAt() { return startedAt; }
+
+    public String displayName() {
+        return getConfig().getString("weergavenaam", "The Blueprint");
+    }
+
     private void cacheConfig() {
+        nl.robin.rolbeheer.util.Text.setPrefix(getConfig().getString("berichten.prefix",
+                nl.robin.rolbeheer.util.Text.DEFAULT_PREFIX));
         chatFormat = getConfig().getString("chat.formaat", DEFAULT_CHAT_FORMAT);
         chatEnabled = getConfig().getBoolean("chat.ingeschakeld", true);
         noAccessMessage = getConfig().getString("berichten.geen-toegang-command",
@@ -156,11 +212,14 @@ public final class RolBeheer extends JavaPlugin {
     public PlayerCommands playerCommands() { return playerCommands; }
     public EssentialsImport essentialsImport() { return essentialsImport; }
     public SpawnProtection spawnProtection() { return spawnProtection; }
+    public Stats stats() { return stats; }
+    public Boards boards() { return boards; }
 
     /** Na het wijzigen van instellingen via het paneel. */
     public void refreshSettings() {
         cacheConfig();
         if (spawnProtection != null) spawnProtection.refresh();
+        if (boards != null) boards.updateAll();
     }
 
     /** Het jar-bestand van deze plugin; nodig om een update te kunnen installeren. */

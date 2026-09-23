@@ -1,8 +1,11 @@
 # ------------------------------------------------------------
-#  RolBeheer - instellingen
+#  The Blueprint - instellingen
 #  Rollen zelf staan in roles.yml, spelers in players.yml.
 #  Na handmatig bewerken: /rol herlaad
 # ------------------------------------------------------------
+
+# Naam die in het webpaneel bovenaan staat.
+weergavenaam: "The Blueprint"
 
 # Deze rol heeft iedere speler automatisch.
 standaard-rol: speler
@@ -16,12 +19,38 @@ chat:
 tablijst:
   # Prefix en suffix tonen in de tablijst (TAB).
   ingeschakeld: true
+  # Tekst boven de spelerslijst. Meerdere regels mag.
+  koptekst:
+    - "<gold><bold>Mijn server"
+    - "<gray><spelers> van de <max> spelers online"
+  # Tekst onder de spelerslijst.
+  voettekst:
+    - "<dark_gray>Veel plezier!"
+
+scorebord:
+  # Ranglijst aan de zijkant van het scherm.
+  ingeschakeld: false
+  titel: "<gold><bold>Vaakst dood"
+  # doden of kills
+  soort: doden
+  aantal: 5
 
 naamlabel:
   # Prefix en suffix tonen boven het hoofd van spelers.
   ingeschakeld: true
 
 berichten:
+  # Het naampje voor berichten van de plugin. Leeg laten = helemaal geen naampje.
+  prefix: "<dark_gray>[<gold>Blueprint</gold>]</dark_gray>"
+  # Berichten bij binnenkomen en weggaan. Leeg laten = geen bericht.
+  # Beschikbaar: <naam> <prefix> <suffix> <rol> <spelers> <max> <doden> <kills>
+  join: "<prefix><yellow><naam></yellow> <gray>kwam binnen"
+  vertrek: "<prefix><yellow><naam></yellow> <gray>ging weg"
+  eerste-join: "<gold><naam> speelt hier voor het eerst. Welkom!"
+  # Regels die alleen de speler zelf ziet bij binnenkomst.
+  welkom:
+    - "<gold>Welkom op de server, <naam>!"
+    - "<gray>Er zijn nu <white><spelers></white> spelers online."
   geen-toegang-command: "<red>Je hebt geen toestemming om dit command te gebruiken."
 
 commands:
