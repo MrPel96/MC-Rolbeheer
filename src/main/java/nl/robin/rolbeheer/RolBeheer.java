@@ -9,6 +9,7 @@ import nl.robin.rolbeheer.role.RoleManager;
 import nl.robin.rolbeheer.scan.PluginScanner;
 import nl.robin.rolbeheer.sync.PlayerSync;
 import nl.robin.rolbeheer.spelers.EssentialsImport;
+import nl.robin.rolbeheer.spelers.ForwardExecutor;
 import nl.robin.rolbeheer.spelers.PlayerCommands;
 import nl.robin.rolbeheer.spelers.SpawnProtection;
 import nl.robin.rolbeheer.spelers.Store;
@@ -59,7 +60,10 @@ public final class RolBeheer extends JavaPlugin {
         pm.registerEvents(new PlayerListener(this), this);
         pm.registerEvents(new ServerListener(this), this);
 
-        if (getConfig().getBoolean("commands.ingeschakeld", true)) {
+        // De spelerscommands zijn een extraatje: gaat hier iets mis, dan blijft de rest van
+        // de plugin gewoon draaien in plaats van dat alles uitvalt.
+        try {
+            if (getConfig().getBoolean("commands.ingeschakeld", true)) {
             store = new Store(this);
             playerCommands = new PlayerCommands(this, store);
             playerCommands.registerPermissions();
@@ -72,13 +76,21 @@ public final class RolBeheer extends JavaPlugin {
                 PluginCommand pc = getCommand(name);
                 if (pc == null) continue;
                 if (off.contains(name)) {
-                    releaseCommand(name, pc);
+                    // Niet zelf afhandelen: doorgeven aan de plugin die dit command ook levert.
+                    pc.setPermission(null);
+                    ForwardExecutor forward = new ForwardExecutor(this, name);
+                    pc.setExecutor(forward);
+                    pc.setTabCompleter(forward);
                     continue;
                 }
                 pc.setExecutor(playerCommands);
                 pc.setTabCompleter(playerCommands);
             }
             if (!off.isEmpty()) getLogger().info("Uitgezette commands: " + String.join(", ", off));
+        }
+        } catch (RuntimeException | LinkageError e) {
+            getLogger().warning("De spelerscommands konden niet starten: " + e
+                    + ". De rollen en het webpaneel werken gewoon.");
         }
 
         RolCommand command = new RolCommand(this);
@@ -107,22 +119,6 @@ public final class RolBeheer extends JavaPlugin {
         if (updater != null) updater.applyStagedOnShutdown();
         if (sync != null) sync.shutdown();
         if (roles != null) roles.save();
-    }
-
-    /**
-     * Geeft een command terug aan de server, zodat een andere plugin het mag afhandelen.
-     * Handig als je bijvoorbeeld /warp liever door een warp-plugin laat doen.
-     */
-    private void releaseCommand(String name, PluginCommand pc) {
-        var map = Bukkit.getCommandMap();
-        var known = map.getKnownCommands();
-        known.entrySet().removeIf(e -> e.getValue() == pc);
-        pc.unregister(map);
-        // Staat het command nog bij een andere plugin? Zet dat weer op de gewone naam.
-        known.entrySet().stream()
-                .filter(e -> e.getKey().endsWith(":" + name) && e.getValue() != pc)
-                .findFirst()
-                .ifPresent(e -> known.putIfAbsent(name, e.getValue()));
     }
 
     /** Alles opnieuw inladen: config, rollen, spelers en plugin-scan. */

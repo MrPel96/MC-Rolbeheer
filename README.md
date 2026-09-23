@@ -1,10 +1,10 @@
-# RolBeheer 1.8.0
+# RolBeheer 1.8.1
 
 Eenvoudige rollen- en permissieplugin voor Paper.
 
 ## Bouwen
 **Zonder iets te installeren (GitHub):** zet deze map in een GitHub-repository. Bij elke push bouwt
-GitHub Actions de plugin. Download `RolBeheer-1.8.0.jar` onder *Actions → laatste run → Artifacts*.
+GitHub Actions de plugin. Download `RolBeheer-1.8.1.jar` onder *Actions → laatste run → Artifacts*.
 
 **Lokaal:** installeer JDK 21 en Maven, en voer `mvn package` uit. De jar staat in `target/`.
 Of open de map in IntelliJ IDEA en voer Maven → Lifecycle → package uit.
@@ -104,7 +104,8 @@ commands:
   uitgeschakeld: [warp, warps, setwarp, delwarp]
 ```
 
-Na een herstart laat RolBeheer die commands los en pakt de andere plugin ze weer op.
+Na een herstart geeft RolBeheer die commands door aan de plugin die ze ook levert, dus /warp blijft
+gewoon werken via je warp-plugin.
 
 ### Homes overnemen uit EssentialsX
 Staat er al data in `plugins/Essentials/userdata`, dan verschijnt in het paneel bij Server → Commands
