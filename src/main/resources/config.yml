@@ -24,6 +24,32 @@ naamlabel:
 berichten:
   geen-toegang-command: "<red>Je hebt geen toestemming om dit command te gebruiken."
 
+commands:
+  # Spelerscommands van RolBeheer zelf: /home, /spawn, /warp, /kit, /tpa, /msg en /back.
+  # Zet dit op false als een andere plugin (bijv. EssentialsX) die commands al levert.
+  ingeschakeld: true
+  # Hoeveel homes een speler standaard mag. Meer geef je per rol met rolbeheer.homes.<getal>.
+  standaard-homes: 1
+  # Hoe lang een teleportverzoek geldig blijft, in seconden.
+  tpa-seconden: 60
+  spawn:
+    # Nieuwe spelers beginnen op het spawnpunt dat je met /setspawn hebt gezet.
+    bij-eerste-join: true
+    # Na de dood terug naar het spawnpunt, tenzij de speler een bed of respawn anchor heeft.
+    bij-dood: true
+    bescherming:
+      # Beschermt het gebied rond je spawnpunt. Wie rolbeheer.spawnbescherming.bypass heeft, mag alles.
+      ingeschakeld: false
+      # Straal in blokken rond het spawnpunt.
+      straal: 32
+      geen-pvp: true
+      geen-mobschade: true
+      # Ook kisten, deuren en knoppen op slot zetten.
+      geen-interactie: false
+  # Commands die je liever door een andere plugin laat doen. Vraagt om een herstart.
+  # Bijvoorbeeld: [warp, warps, setwarp, delwarp]
+  uitgeschakeld: []
+
 web:
   # Webpaneel voor het beheren van rollen in je browser. Inloggen: /rol web
   ingeschakeld: true

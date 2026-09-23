@@ -44,6 +44,7 @@ public final class WebApi {
                 case "state" -> state();
                 case "plugins" -> plugins();
                 case "server" -> server(null);
+                case "spelers" -> spelers(null);
                 default -> throw new ApiException("Onbekende actie.");
             };
         }
@@ -74,6 +75,81 @@ public final class WebApi {
                 settings.applyLive(key, value);
                 log("serverinstelling " + key + " = " + value);
                 return server(null);
+            }
+            case "spelers/instelling" -> {
+                String key = str(req, "key");
+                switch (key) {
+                    case "standaard-homes" -> plugin.getConfig().set("commands.standaard-homes",
+                            Math.max(1, Math.min(100, number(req))));
+                    case "tpa-seconden" -> plugin.getConfig().set("commands.tpa-seconden",
+                            Math.max(5, Math.min(600, number(req))));
+                    case "ingeschakeld" -> plugin.getConfig().set("commands.ingeschakeld",
+                            req.has("value") && req.get("value").getAsBoolean());
+                    case "spawn-eerste-join" -> plugin.getConfig().set("commands.spawn.bij-eerste-join",
+                            req.has("value") && req.get("value").getAsBoolean());
+                    case "spawn-bij-dood" -> plugin.getConfig().set("commands.spawn.bij-dood",
+                            req.has("value") && req.get("value").getAsBoolean());
+                    case "bescherming", "bescherming-pvp", "bescherming-mobs", "bescherming-interactie" -> {
+                        String path = switch (key) {
+                            case "bescherming" -> "ingeschakeld";
+                            case "bescherming-pvp" -> "geen-pvp";
+                            case "bescherming-mobs" -> "geen-mobschade";
+                            default -> "geen-interactie";
+                        };
+                        plugin.getConfig().set("commands.spawn.bescherming." + path,
+                                req.has("value") && req.get("value").getAsBoolean());
+                    }
+                    case "bescherming-straal" -> plugin.getConfig().set("commands.spawn.bescherming.straal",
+                            Math.max(1, Math.min(500, number(req))));
+                    default -> throw new ApiException("Onbekende instelling.");
+                }
+                plugin.saveConfig();
+                plugin.refreshSettings();
+                log("spelerscommands: " + key + " gewijzigd");
+                return spelers(key.equals("ingeschakeld") ? "Opgeslagen. Herstart de server om dit toe te passen." : null);
+            }
+            case "spelers/import" -> {
+                if (plugin.essentialsImport() == null) throw new ApiException("De spelerscommands staan uit.");
+                var result = plugin.essentialsImport().run(req.has("overwrite") && req.get("overwrite").getAsBoolean());
+                if (result.problem() != null) throw new ApiException(result.problem());
+                log("Essentials-import: " + result.homes() + " homes van " + result.players() + " spelers");
+                String msg = result.homes() + " homes van " + result.players() + " spelers overgenomen"
+                        + (result.skipped() > 0 ? ", " + result.skipped() + " overgeslagen" : "")
+                        + (result.spawn() ? ", spawnpunt overgenomen" : "") + ".";
+                return spelers(msg);
+            }
+            case "spelers/commando" -> {
+                String name = str(req, "name").toLowerCase(Locale.ROOT);
+                if (!nl.robin.rolbeheer.spelers.PlayerCommands.COMMANDS.contains(name)) {
+                    throw new ApiException("Onbekend command.");
+                }
+                java.util.List<String> off = new java.util.ArrayList<>(
+                        plugin.getConfig().getStringList("commands.uitgeschakeld"));
+                boolean enable = req.has("enabled") && req.get("enabled").getAsBoolean();
+                if (enable) off.remove(name);
+                else if (!off.contains(name)) off.add(name);
+                plugin.getConfig().set("commands.uitgeschakeld", off);
+                plugin.saveConfig();
+                log("command /" + name + (enable ? " aangezet" : " uitgezet"));
+                return spelers("Opgeslagen. Herstart de server om dit toe te passen.");
+            }
+            case "spelers/warp" -> {
+                if (plugin.store() == null) throw new ApiException("De spelerscommands staan uit.");
+                if (!plugin.store().deleteWarp(str(req, "name"))) throw new ApiException("Die warp bestaat niet.");
+                log("warp " + str(req, "name") + " verwijderd");
+                return spelers("Warp verwijderd.");
+            }
+            case "spelers/kit" -> {
+                if (plugin.store() == null) throw new ApiException("De spelerscommands staan uit.");
+                String name = str(req, "name");
+                if (req.has("delete") && req.get("delete").getAsBoolean()) {
+                    if (!plugin.store().deleteKit(name)) throw new ApiException("Die kit bestaat niet.");
+                    log("kit " + name + " verwijderd");
+                    return spelers("Kit verwijderd.");
+                }
+                plugin.store().setKitCooldown(name, Math.max(0, Math.min(2_592_000, number(req))));
+                log("kit " + name + ": wachttijd gewijzigd");
+                return spelers("Wachttijd opgeslagen.");
             }
             case "server/world" -> {
                 return server(settings.world(str(req, "world")).getName());
@@ -232,6 +308,73 @@ public final class WebApi {
             array.add(j);
         }
         return array;
+    }
+
+    private JsonObject spelers(String message) {
+        JsonObject o = new JsonObject();
+        o.addProperty("enabled", plugin.getConfig().getBoolean("commands.ingeschakeld", true));
+        o.addProperty("defaultHomes", plugin.getConfig().getInt("commands.standaard-homes", 1));
+        o.addProperty("tpaSeconds", plugin.getConfig().getInt("commands.tpa-seconden", 60));
+        o.addProperty("canImport", plugin.essentialsImport() != null && plugin.essentialsImport().available());
+        o.addProperty("spawnFirstJoin", plugin.getConfig().getBoolean("commands.spawn.bij-eerste-join", true));
+        o.addProperty("spawnOnDeath", plugin.getConfig().getBoolean("commands.spawn.bij-dood", true));
+        o.addProperty("protection", plugin.getConfig().getBoolean("commands.spawn.bescherming.ingeschakeld", false));
+        o.addProperty("protectionRadius", plugin.getConfig().getInt("commands.spawn.bescherming.straal", 32));
+        o.addProperty("protectionPvp", plugin.getConfig().getBoolean("commands.spawn.bescherming.geen-pvp", true));
+        o.addProperty("protectionMobs", plugin.getConfig().getBoolean("commands.spawn.bescherming.geen-mobschade", true));
+        o.addProperty("protectionInteract", plugin.getConfig().getBoolean("commands.spawn.bescherming.geen-interactie", false));
+
+        java.util.List<String> off = plugin.getConfig().getStringList("commands.uitgeschakeld");
+        JsonArray commands = new JsonArray();
+        for (String name : nl.robin.rolbeheer.spelers.PlayerCommands.COMMANDS) {
+            JsonObject j = new JsonObject();
+            j.addProperty("name", name);
+            j.addProperty("enabled", !off.contains(name));
+            commands.add(j);
+        }
+        o.add("commands", commands);
+        if (message != null) o.addProperty("message", message);
+
+        JsonArray warps = new JsonArray();
+        JsonArray kits = new JsonArray();
+        JsonObject spawn = null;
+        if (plugin.store() != null) {
+            for (String name : plugin.store().warpNames()) {
+                org.bukkit.Location location = plugin.store().warp(name);
+                JsonObject j = new JsonObject();
+                j.addProperty("name", name);
+                j.addProperty("where", location == null ? "?" : location.getWorld().getName()
+                        + " (" + location.getBlockX() + ", " + location.getBlockY() + ", " + location.getBlockZ() + ")");
+                j.addProperty("permission", "rolbeheer.warp." + name);
+                warps.add(j);
+            }
+            for (String name : plugin.store().kitNames()) {
+                JsonObject j = new JsonObject();
+                j.addProperty("name", name);
+                j.addProperty("cooldown", plugin.store().kitCooldown(name));
+                j.addProperty("items", plugin.store().kitItems(name).size());
+                j.addProperty("permission", "rolbeheer.kit." + name);
+                kits.add(j);
+            }
+            org.bukkit.Location location = plugin.store().spawn();
+            if (location != null) {
+                spawn = new JsonObject();
+                spawn.addProperty("where", location.getWorld().getName() + " (" + location.getBlockX()
+                        + ", " + location.getBlockY() + ", " + location.getBlockZ() + ")");
+            }
+        }
+        o.add("warps", warps);
+        o.add("kits", kits);
+        if (spawn != null) o.add("spawn", spawn);
+        return o;
+    }
+
+    private static int number(JsonObject req) {
+        try {
+            return req.get("value").getAsInt();
+        } catch (RuntimeException e) {
+            throw new ApiException("Vul een getal in.");
+        }
     }
 
     // ---------------------------------------------------------------- schrijven

@@ -1,10 +1,10 @@
-# RolBeheer 1.4.0
+# RolBeheer 1.8.0
 
 Eenvoudige rollen- en permissieplugin voor Paper.
 
 ## Bouwen
 **Zonder iets te installeren (GitHub):** zet deze map in een GitHub-repository. Bij elke push bouwt
-GitHub Actions de plugin. Download `RolBeheer-1.4.0.jar` onder *Actions → laatste run → Artifacts*.
+GitHub Actions de plugin. Download `RolBeheer-1.8.0.jar` onder *Actions → laatste run → Artifacts*.
 
 **Lokaal:** installeer JDK 21 en Maven, en voer `mvn package` uit. De jar staat in `target/`.
 Of open de map in IntelliJ IDEA en voer Maven → Lifecycle → package uit.
@@ -46,6 +46,73 @@ Het paneel heeft twee onderdelen, te kiezen rechtsboven:
 - *Spelers en toegang*: witte lijst aan of uit en beheren, operators toekennen of afnemen, verbanningen opheffen en spelers van de server halen.
 
 Instellingen in `bukkit.yml`, `spigot.yml` en `paper.yml` zitten er bewust niet in. Daar staan honderden technische opties die je server ook echt kapot kunnen configureren.
+
+## Spelerscommands
+De plugin levert zelf de commands die spelers verwachten, dus je hebt EssentialsX hier niet voor nodig:
+
+| Command | Permissie | Standaard |
+| --- | --- | --- |
+| `/home [naam]`, `/homes` | `rolbeheer.home` | iedereen |
+| `/sethome [naam]`, `/delhome` | `rolbeheer.sethome` | iedereen |
+| `/spawn` | `rolbeheer.spawn` | iedereen |
+| `/setspawn` | `rolbeheer.setspawn` | alleen OP |
+| `/back` | `rolbeheer.back` | iedereen |
+| `/warp [naam]`, `/warps` | `rolbeheer.warp` + `rolbeheer.warp.<naam>` | per warp instellen |
+| `/setwarp`, `/delwarp` | `rolbeheer.setwarp` | alleen OP |
+| `/kit [naam]`, `/kits` | `rolbeheer.kit` + `rolbeheer.kit.<naam>` | per kit instellen |
+| `/setkit <naam> [wachttijd]`, `/delkit` | `rolbeheer.setkit` | alleen OP |
+| `/tpa`, `/tpahere`, `/tpaccept`, `/tpdeny` | `rolbeheer.tpa` | iedereen |
+| `/msg`, `/r` | `rolbeheer.msg` | iedereen |
+
+- **Aantal homes**: standaard 1, in te stellen in het paneel. Wil je dat een rol er meer mag,
+  geef die rol dan de permissie `rolbeheer.homes.5` (of een ander getal). Het hoogste getal telt.
+- **Warps maken**: ga naar de plek en typ `/setwarp shop`. Geef daarna de rollen die er mogen komen
+  de permissie `rolbeheer.warp.shop` in het paneel.
+- **Kits maken**: vul je inventaris, typ `/setkit starter 86400` (dat laatste is de wachttijd in seconden)
+  en geef de rol `rolbeheer.kit.starter`.
+- Warps en kits verschijnen vanzelf in het paneel bij de rollen, onder de groep RolBeheer.
+
+### Spawn
+`/setspawn` zet het spawnpunt, `/spawn` brengt spelers erheen. Twee extra's staan standaard aan en zijn
+in het paneel uit te zetten:
+
+- Nieuwe spelers beginnen op het spawnpunt in plaats van ergens willekeurig in de wereld.
+- Na de dood komen spelers op het spawnpunt uit, tenzij ze een bed of respawn anchor hebben.
+
+Daarmee kan EssentialsSpawn eruit. Doe wel eerst de import hieronder, want die leest het spawnpunt uit
+`plugins/Essentials/spawn.yml`.
+
+### Spawnbescherming
+Aan te zetten in het paneel. Binnen de ingestelde straal rond je spawnpunt geldt dan:
+
+- niemand bouwt of sloopt er iets, ook geen emmers water of lava
+- explosies laten de blokken daar met rust
+- optioneel: geen PvP, geen mobschade, en kisten en deuren op slot
+
+Wie de permissie `rolbeheer.spawnbescherming.bypass` heeft (standaard OP) mag alles gewoon. Geef die
+permissie aan je bouwers-rol als zij er wel mogen werken.
+
+Dit staat los van `spawn-protection` in `server.properties`. Die vanilla-variant werkt alleen rond het
+wereldspawnpunt en kent alleen OP als uitzondering; deze werkt rond jouw `/setspawn` en luistert naar rollen.
+
+### Commands uitzetten
+Laat je een command liever door een andere plugin doen (bijvoorbeeld `/warp` door een warp-plugin)?
+Zet het dan uit in het paneel bij Server → Commands, of in `config.yml`:
+
+```yaml
+commands:
+  uitgeschakeld: [warp, warps, setwarp, delwarp]
+```
+
+Na een herstart laat RolBeheer die commands los en pakt de andere plugin ze weer op.
+
+### Homes overnemen uit EssentialsX
+Staat er al data in `plugins/Essentials/userdata`, dan verschijnt in het paneel bij Server → Commands
+de knop **Overnemen**. Die leest alle homes van al je spelers in, en het spawnpunt uit `Essentials/spawn.yml`
+als je er nog geen hebt. Bestaande homes in RolBeheer blijven staan. Essentials mag daarna weg.
+
+Gebruik je liever EssentialsX voor deze commands? Zet dan in `config.yml` `commands.ingeschakeld: false`
+en herstart, anders claimen twee plugins dezelfde commands.
 
 ## Updaten
 Vanaf versie 1.3.0 gaat updaten via het paneel: tabblad **Server → Updates**. Daar staat welke versie

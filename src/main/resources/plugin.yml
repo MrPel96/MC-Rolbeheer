@@ -10,7 +10,131 @@ commands:
     usage: /rol help
     aliases: [rollen, rolbeheer]
     permission: rolbeheer.admin
+  home:
+    description: Ga naar je home
+    usage: /home [naam]
+    permission: rolbeheer.home
+  sethome:
+    description: Zet een home op je huidige plek
+    usage: /sethome [naam]
+    permission: rolbeheer.sethome
+  delhome:
+    description: Verwijder een home
+    usage: /delhome [naam]
+    permission: rolbeheer.sethome
+  homes:
+    description: Laat je homes zien
+    usage: /homes
+    permission: rolbeheer.home
+  spawn:
+    description: Ga naar de spawn
+    usage: /spawn
+    permission: rolbeheer.spawn
+  setspawn:
+    description: Zet het spawnpunt op je huidige plek
+    usage: /setspawn
+    permission: rolbeheer.setspawn
+  back:
+    description: Ga terug naar je vorige plek
+    usage: /back
+    permission: rolbeheer.back
+  warp:
+    description: Ga naar een warp
+    usage: /warp [naam]
+    permission: rolbeheer.warp
+  warps:
+    description: Laat de warps zien
+    usage: /warps
+    permission: rolbeheer.warp
+  setwarp:
+    description: Maak een warp op je huidige plek
+    usage: /setwarp <naam>
+    permission: rolbeheer.setwarp
+  delwarp:
+    description: Verwijder een warp
+    usage: /delwarp <naam>
+    permission: rolbeheer.setwarp
+  kit:
+    description: Pak een kit
+    usage: /kit [naam]
+    permission: rolbeheer.kit
+  kits:
+    description: Laat de kits zien
+    usage: /kits
+    permission: rolbeheer.kit
+  setkit:
+    description: Maak een kit van je inventaris
+    usage: /setkit <naam> [wachttijd]
+    permission: rolbeheer.setkit
+  delkit:
+    description: Verwijder een kit
+    usage: /delkit <naam>
+    permission: rolbeheer.setkit
+  tpa:
+    description: Vraag of je naar iemand mag teleporteren
+    usage: /tpa <speler>
+    permission: rolbeheer.tpa
+  tpahere:
+    description: Vraag of iemand naar jou komt
+    usage: /tpahere <speler>
+    permission: rolbeheer.tpa
+  tpaccept:
+    description: Accepteer een teleportverzoek
+    usage: /tpaccept
+    permission: rolbeheer.tpa
+  tpdeny:
+    description: Weiger een teleportverzoek
+    usage: /tpdeny
+    permission: rolbeheer.tpa
+  msg:
+    description: Stuur een prive-bericht
+    usage: /msg <speler> <bericht>
+    permission: rolbeheer.msg
+  r:
+    description: Antwoord op het laatste prive-bericht
+    usage: /r <bericht>
+    permission: rolbeheer.msg
+
 permissions:
   rolbeheer.admin:
     description: Toegang tot /rol en het rollenmenu
     default: op
+  rolbeheer.home:
+    description: /home en /homes gebruiken
+    default: true
+  rolbeheer.sethome:
+    description: /sethome en /delhome gebruiken
+    default: true
+  rolbeheer.homes.3:
+    description: Maximaal 3 homes (gebruik rolbeheer.homes.<getal> voor een ander aantal)
+    default: false
+  rolbeheer.spawn:
+    description: /spawn gebruiken
+    default: true
+  rolbeheer.setspawn:
+    description: Het spawnpunt verzetten
+    default: op
+  rolbeheer.back:
+    description: /back gebruiken
+    default: true
+  rolbeheer.warp:
+    description: Warps gebruiken (per warp geldt ook rolbeheer.warp.<naam>)
+    default: true
+  rolbeheer.setwarp:
+    description: Warps maken en verwijderen
+    default: op
+  rolbeheer.kit:
+    description: Kits pakken (per kit geldt ook rolbeheer.kit.<naam>)
+    default: true
+  rolbeheer.setkit:
+    description: Kits maken en verwijderen
+    default: op
+  rolbeheer.tpa:
+    description: Teleportverzoeken sturen en beantwoorden
+    default: true
+  rolbeheer.spawnbescherming.bypass:
+    description: Mag bouwen en vechten binnen het beschermde spawngebied
+    default: op
+  rolbeheer.msg:
+    description: Prive-berichten sturen met /msg en /r
+    default: true

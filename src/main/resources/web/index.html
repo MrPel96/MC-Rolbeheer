@@ -223,6 +223,12 @@ main { padding: 1.5rem 2rem 3rem; min-width: 0; }
   overflow-wrap: anywhere;
 }
 
+.cmd-toggles {
+  display: grid; grid-template-columns: repeat(auto-fill, minmax(9rem, 1fr)); gap: .4rem .8rem;
+  max-width: 52rem;
+}
+.cmd-toggle { display: flex; align-items: center; gap: .45rem; }
+
 /* ---------- melding ---------- */
 .toast {
   position: fixed; bottom: 1.25rem; left: 50%; transform: translate(-50%, 1rem); opacity: 0;
@@ -343,7 +349,7 @@ function mcHtml(text) {
 }
 
 const S = {
-  view: "roles", server: null, serverTab: "props", update: null,
+  view: "roles", server: null, serverTab: "props", update: null, spelers: null,
   state: null, plugins: null, role: null, tab: "settings",
   group: OWN, search: "", onlyCmd: false, groupFilter: "",
   form: null, previewPrefix: "", previewSuffix: ""
@@ -488,13 +494,138 @@ function renderServer() {
     <section class="role-head"><h1>Serverinstellingen</h1>
       <p class="role-meta">Wijzigingen worden meteen opgeslagen.</p></section>
     <div class="tabs" role="tablist">
-      ${tab("props", "Server")}${tab("rules", "Gameregels")}${tab("access", "Spelers en toegang")}${tab("update", "Updates")}
+      ${tab("props", "Server")}${tab("rules", "Gameregels")}${tab("access", "Spelers en toegang")}${tab("commands", "Commands")}${tab("update", "Updates")}
     </div>
     <section id="serverBody" role="tabpanel"></section>`;
   if (S.serverTab === "props") renderProps();
   else if (S.serverTab === "rules") renderRules();
   else if (S.serverTab === "update") renderUpdate();
+  else if (S.serverTab === "commands") renderSpelers();
   else renderAccess();
+}
+
+async function loadSpelers(path, body, okText) {
+  try {
+    S.spelers = path ? await api(path, body) : await api("spelers");
+    renderSpelers();
+    if (S.spelers.message || okText) toast(S.spelers.message || okText);
+  } catch (e) {
+    if (e.message !== "uitgelogd") { toast(e.message, true); renderSpelers(); }
+  }
+}
+
+function renderSpelers() {
+  const body = $("#serverBody");
+  if (!body) return;
+  const d = S.spelers;
+  if (!d) { body.innerHTML = '<p class="empty">Laden…</p>'; loadSpelers(null); return; }
+
+  const warps = d.warps.map(w => `
+    <li><span>${esc(w.name)} <span class="detail">${esc(w.where)} · ${esc(w.permission)}</span></span>
+      <button class="btn btn-small" type="button" data-warp-del="${esc(w.name)}">Verwijderen</button></li>`).join("")
+    || '<li class="hint">Nog geen warps. Ga in de game naar een plek en typ /setwarp &lt;naam&gt;.</li>';
+
+  const kits = d.kits.map(k => `
+    <li><span>${esc(k.name)} <span class="detail">${k.items} items · ${esc(k.permission)}</span></span>
+      <span class="add-row" style="margin:0">
+        <input class="input num" type="number" min="0" value="${k.cooldown}" data-kit-cd="${esc(k.name)}"
+          title="Wachttijd in seconden" style="width:6rem">
+        <button class="btn btn-small" type="button" data-kit-del="${esc(k.name)}">Verwijderen</button>
+      </span></li>`).join("")
+    || '<li class="hint">Nog geen kits. Vul je inventaris en typ /setkit &lt;naam&gt; [wachttijd].</li>';
+
+  const cmdToggles = d.commands.map(c => `
+    <label class="cmd-toggle"><input type="checkbox" data-cmd="${esc(c.name)}" ${c.enabled ? "checked" : ""}>
+      <code>/${esc(c.name)}</code></label>`).join("");
+
+  const importRow = d.canImport ? `
+    <div class="setting-row">
+      <div><div class="slabel">Homes uit EssentialsX overnemen</div>
+        <div class="sdesc">Leest <code>plugins/Essentials/userdata</code> en neemt de homes van al je spelers over.
+          Bestaande homes in RolBeheer blijven staan. Ook het spawnpunt komt mee als je er nog geen hebt.</div></div>
+      <div><button class="btn btn-primary" type="button" id="importEss">Overnemen</button></div>
+    </div>` : "";
+
+  body.innerHTML = `
+    <p class="warn">De commands <code>/home</code>, <code>/sethome</code>, <code>/spawn</code>, <code>/back</code>,
+      <code>/warp</code>, <code>/kit</code>, <code>/tpa</code>, <code>/msg</code> en <code>/r</code> zitten in deze
+      plugin. Hun permissies staan bij de rollen onder <strong>RolBeheer</strong>.</p>
+    <div class="setting-rows" style="max-width:52rem">
+      <div class="setting-row">
+        <div><div class="slabel">Spelerscommands${d.enabled ? "" : '<span class="badge">staat uit</span>'}</div>
+          <div class="sdesc">Zet dit uit als een andere plugin deze commands levert. Vraagt om een herstart.</div></div>
+        <div><label class="switch"><input type="checkbox" data-sp="ingeschakeld" ${d.enabled ? "checked" : ""}>
+          <span>${d.enabled ? "Aan" : "Uit"}</span></label></div>
+      </div>
+      <div class="setting-row">
+        <div><div class="slabel">Homes per speler</div>
+          <div class="sdesc">Meer geef je aan een rol met de permissie <code>rolbeheer.homes.5</code> bij
+            Handmatige permissies.</div></div>
+        <div><input class="input num" type="number" min="1" max="100" value="${d.defaultHomes}" data-sp="standaard-homes"></div>
+      </div>
+      <div class="setting-row">
+        <div><div class="slabel">Teleportverzoek verloopt na</div>
+          <div class="sdesc">In seconden, voor <code>/tpa</code> en <code>/tpahere</code>.</div></div>
+        <div><input class="input num" type="number" min="5" max="600" value="${d.tpaSeconds}" data-sp="tpa-seconden"></div>
+      </div>
+      ${importRow}
+      <div class="setting-row">
+        <div><div class="slabel">Spawnpunt</div>
+          <div class="sdesc">Ga in de game naar de goede plek en typ <code>/setspawn</code>.</div></div>
+        <div>${d.spawn ? esc(d.spawn.where) : '<span class="hint">niet gezet</span>'}</div>
+      </div>
+      <div class="setting-row">
+        <div><div class="slabel">Nieuwe spelers op spawn laten beginnen</div>
+          <div class="sdesc">Anders komen ze ergens willekeurig in de wereld uit.</div></div>
+        <div><label class="switch"><input type="checkbox" data-sp="spawn-eerste-join" ${d.spawnFirstJoin ? "checked" : ""}>
+          <span>${d.spawnFirstJoin ? "Aan" : "Uit"}</span></label></div>
+      </div>
+      <div class="setting-row">
+        <div><div class="slabel">Spawnbescherming</div>
+          <div class="sdesc">Binnen dit gebied kan niemand bouwen, slopen of dingen opblazen.
+            Wie de permissie <code>rolbeheer.spawnbescherming.bypass</code> heeft, mag alles gewoon.</div></div>
+        <div><label class="switch"><input type="checkbox" data-sp="bescherming" ${d.protection ? "checked" : ""}>
+          <span>${d.protection ? "Aan" : "Uit"}</span></label></div>
+      </div>
+      ${d.protection ? `
+      <div class="setting-row">
+        <div><div class="slabel">Straal van het beschermde gebied</div>
+          <div class="sdesc">In blokken rond het spawnpunt, in alle hoogtes.</div></div>
+        <div><input class="input num" type="number" min="1" max="500" value="${d.protectionRadius}" data-sp="bescherming-straal"></div>
+      </div>
+      <div class="setting-row">
+        <div><div class="slabel">Geen PvP bij spawn</div></div>
+        <div><label class="switch"><input type="checkbox" data-sp="bescherming-pvp" ${d.protectionPvp ? "checked" : ""}>
+          <span>${d.protectionPvp ? "Aan" : "Uit"}</span></label></div>
+      </div>
+      <div class="setting-row">
+        <div><div class="slabel">Geen mobschade bij spawn</div>
+          <div class="sdesc">Creepers en zombies doen spelers dan geen pijn binnen het gebied.</div></div>
+        <div><label class="switch"><input type="checkbox" data-sp="bescherming-mobs" ${d.protectionMobs ? "checked" : ""}>
+          <span>${d.protectionMobs ? "Aan" : "Uit"}</span></label></div>
+      </div>
+      <div class="setting-row">
+        <div><div class="slabel">Kisten en deuren op slot</div>
+          <div class="sdesc">Ook kisten, ovens, deuren en knoppen zijn dan niet te gebruiken.</div></div>
+        <div><label class="switch"><input type="checkbox" data-sp="bescherming-interactie" ${d.protectionInteract ? "checked" : ""}>
+          <span>${d.protectionInteract ? "Aan" : "Uit"}</span></label></div>
+      </div>` : ""}
+      <div class="setting-row">
+        <div><div class="slabel">Na de dood terug naar spawn</div>
+          <div class="sdesc">Heeft de speler een bed of respawn anchor, dan gaat hij daar naartoe.</div></div>
+        <div><label class="switch"><input type="checkbox" data-sp="spawn-bij-dood" ${d.spawnOnDeath ? "checked" : ""}>
+          <span>${d.spawnOnDeath ? "Aan" : "Uit"}</span></label></div>
+      </div>
+    </div>
+    <h2 style="margin:1.75rem 0 .3rem;font-size:1.05rem">Welke commands doet RolBeheer?</h2>
+    <p class="hint" style="margin:0 0 .6rem">Zet een command uit als een andere plugin het al levert.
+      Dat gaat in na een herstart.</p>
+    <div class="cmd-toggles">${cmdToggles}</div>
+    <div class="list-cols" style="margin-top:1.5rem">
+      <div><h2 style="margin:0;font-size:1.05rem">Warps</h2><ul class="mini-list">${warps}</ul></div>
+      <div><h2 style="margin:0;font-size:1.05rem">Kits</h2><ul class="mini-list">${kits}</ul>
+        <p class="hint">Het getal is de wachttijd in seconden. Wijzig het en klik ernaast om op te slaan.</p></div>
+    </div>`;
 }
 
 async function loadUpdate(action) {
@@ -987,6 +1118,24 @@ document.addEventListener("click", async (ev) => {
     await serverChange("server/property", { key: "motd", value: $("#motdText").value }, "MOTD opgeslagen.");
     return;
   }
+  if (t.id === "importEss") {
+    if (confirm("Homes uit EssentialsX overnemen? Bestaande homes in RolBeheer blijven staan.")) {
+      t.disabled = true;
+      t.textContent = "Bezig…";
+      await loadSpelers("spelers/import", { overwrite: false });
+    }
+    return;
+  }
+  if (t.dataset.warpDel) {
+    if (confirm(`Warp ${t.dataset.warpDel} verwijderen?`)) await loadSpelers("spelers/warp", { name: t.dataset.warpDel });
+    return;
+  }
+  if (t.dataset.kitDel) {
+    if (confirm(`Kit ${t.dataset.kitDel} verwijderen?`)) {
+      await loadSpelers("spelers/kit", { name: t.dataset.kitDel, delete: true });
+    }
+    return;
+  }
   if (t.id === "checkUpdate" || t.id === "installUpdate") {
     t.disabled = true;
     t.textContent = t.id === "checkUpdate" ? "Bezig met controleren…" : "Bezig met downloaden…";
@@ -1061,6 +1210,13 @@ document.addEventListener("change", async (ev) => {
   } else if (t.dataset.rule) {
     const value = t.type === "checkbox" ? String(t.checked) : t.value;
     await serverChange("server/gamerule", { world: S.server.world, key: t.dataset.rule, value });
+  } else if (t.dataset.sp) {
+    const value = t.type === "checkbox" ? t.checked : Number(t.value);
+    await loadSpelers("spelers/instelling", { key: t.dataset.sp, value });
+  } else if (t.dataset.cmd) {
+    await loadSpelers("spelers/commando", { name: t.dataset.cmd, enabled: t.checked });
+  } else if (t.dataset.kitCd) {
+    await loadSpelers("spelers/kit", { name: t.dataset.kitCd, value: Number(t.value) });
   } else if (t.id === "wlToggle") {
     await serverChange("server/whitelist", { on: t.checked });
   } else if (t.id === "worldPick") {
