@@ -34,9 +34,6 @@ public final class ServerSettings {
                           List<String> options, int min, int max, boolean restart) {}
 
     private static final List<Setting> SETTINGS = List.of(
-            new Setting("motd", "MOTD",
-                    "De tekst die spelers zien in hun serverlijst. Maximaal twee regels.",
-                    Type.COLORTEXT, List.of(), 0, 0, false),
             new Setting("max-players", "Max players",
                     "Hoeveel spelers tegelijk kunnen inloggen.", Type.NUMBER, List.of(), 1, 1000, false),
             new Setting("difficulty", "Difficulty",
@@ -73,54 +70,59 @@ public final class ServerSettings {
                     "Schopt spelers die niet op de whitelist staan er meteen uit.",
                     Type.BOOL, List.of(), 0, 0, false));
 
-    /** Gameregels die je in de praktijk aanpast, met uitleg. */
-    private static final Map<String, String[]> RULE_LABELS = new LinkedHashMap<>();
+    /**
+     * Gameregels die je in de praktijk aanpast. Minecraft 26 heeft ze allemaal hernoemd
+     * (keepInventory werd keep_inventory), dus we proberen eerst de nieuwe naam en dan de oude.
+     */
+    private record RuleDef(List<String> names, String description) {}
 
-    static {
-        RULE_LABELS.put("keepInventory", new String[]{"keepInventory",
-                "Spelers behouden hun spullen als ze doodgaan."});
-        RULE_LABELS.put("doDaylightCycle", new String[]{"doDaylightCycle",
-                "Dag- en nachtcyclus. Staat dit uit, dan blijft de tijd stilstaan."});
-        RULE_LABELS.put("doWeatherCycle", new String[]{"doWeatherCycle",
-                "Het weer verandert vanzelf."});
-        RULE_LABELS.put("doMobSpawning", new String[]{"doMobSpawning",
-                "Mobs verschijnen vanzelf. Geldt voor dieren én monsters."});
-        RULE_LABELS.put("mobGriefing", new String[]{"mobGriefing",
-                "Mobs mogen blokken kapotmaken. Uitzetten beschermt je bouwwerken tegen creepers en endermen."});
-        RULE_LABELS.put("doFireTick", new String[]{"doFireTick",
-                "Vuur verspreidt zich. Uitzetten voorkomt afgebrande huizen."});
-        RULE_LABELS.put("fallDamage", new String[]{"fallDamage",
-                "Valschade."});
-        RULE_LABELS.put("fireDamage", new String[]{"fireDamage",
-                "Vuurschade."});
-        RULE_LABELS.put("drowningDamage", new String[]{"drowningDamage",
-                "Verdrinkingsschade."});
-        RULE_LABELS.put("naturalRegeneration", new String[]{"naturalRegeneration",
-                "Spelers krijgen vanzelf hartjes terug."});
-        RULE_LABELS.put("showDeathMessages", new String[]{"showDeathMessages",
-                "Doodsberichten in de chat."});
-        RULE_LABELS.put("announceAdvancements", new String[]{"announceAdvancements",
-                "Advancements melden in de chat."});
-        RULE_LABELS.put("doImmediateRespawn", new String[]{"doImmediateRespawn",
-                "Meteen respawnen, zonder het scherm 'Je bent gestorven'."});
-        RULE_LABELS.put("doInsomnia", new String[]{"doInsomnia",
-                "Phantoms verschijnen als spelers lang niet slapen."});
-        RULE_LABELS.put("doPatrolSpawning", new String[]{"doPatrolSpawning",
-                "Patrouilles van pillagers."});
-        RULE_LABELS.put("doTraderSpawning", new String[]{"doTraderSpawning",
-                "Wandering traders verschijnen."});
-        RULE_LABELS.put("doInsomnia", new String[]{"doInsomnia",
-                "Phantoms verschijnen als spelers lang niet slapen."});
-        RULE_LABELS.put("playersSleepingPercentage", new String[]{"playersSleepingPercentage",
-                "Hoeveel procent van de spelers moet slapen om het dag te maken."});
-        RULE_LABELS.put("randomTickSpeed", new String[]{"randomTickSpeed",
-                "Groeisnelheid van planten. Standaard 3; hoger kost prestaties."});
-        RULE_LABELS.put("spawnRadius", new String[]{"spawnRadius",
-                "Spreiding rond het spawnpunt."});
-        RULE_LABELS.put("disableRaids", new String[]{"disableRaids",
-                "Raids uitschakelen."});
-        RULE_LABELS.put("doLimitedCrafting", new String[]{"doLimitedCrafting",
-                "Alleen recepten craften die je geleerd hebt."});
+    private static final List<RuleDef> RULES = List.of(
+            new RuleDef(List.of("keep_inventory", "keepInventory"),
+                    "Spelers behouden hun spullen als ze doodgaan."),
+            new RuleDef(List.of("fire_spread_radius_around_player", "doFireTick"),
+                    "Hoe ver vuur zich verspreidt. Zet dit op 0 (of uit) en er brandt niets meer af."),
+            new RuleDef(List.of("mob_griefing", "mobGriefing"),
+                    "Mobs mogen blokken kapotmaken. Uitzetten beschermt je bouwwerken tegen creepers en endermen."),
+            new RuleDef(List.of("tnt_explodes"), "TNT ontploft."),
+            new RuleDef(List.of("pvp"), "Spelers kunnen elkaar schade doen."),
+            new RuleDef(List.of("advance_time", "doDaylightCycle"),
+                    "Dag- en nachtcyclus. Staat dit uit, dan blijft de tijd stilstaan."),
+            new RuleDef(List.of("advance_weather", "doWeatherCycle"), "Het weer verandert vanzelf."),
+            new RuleDef(List.of("spawn_mobs", "doMobSpawning"), "Mobs verschijnen vanzelf. Geldt voor dieren en monsters."),
+            new RuleDef(List.of("spawn_monsters"), "Vijandige mobs verschijnen."),
+            new RuleDef(List.of("spawn_phantoms", "doInsomnia"), "Phantoms verschijnen als spelers lang niet slapen."),
+            new RuleDef(List.of("spawn_patrols", "doPatrolSpawning"), "Patrouilles van pillagers."),
+            new RuleDef(List.of("spawn_wandering_traders", "doTraderSpawning"), "Wandering traders verschijnen."),
+            new RuleDef(List.of("raids"), "Raids kunnen plaatsvinden."),
+            new RuleDef(List.of("fall_damage", "fallDamage"), "Valschade."),
+            new RuleDef(List.of("fire_damage", "fireDamage"), "Vuurschade."),
+            new RuleDef(List.of("drowning_damage", "drowningDamage"), "Verdrinkingsschade."),
+            new RuleDef(List.of("natural_health_regeneration", "naturalRegeneration"),
+                    "Spelers krijgen vanzelf hartjes terug."),
+            new RuleDef(List.of("show_death_messages", "showDeathMessages"), "Doodsberichten in de chat."),
+            new RuleDef(List.of("show_advancement_messages", "announceAdvancements"),
+                    "Advancements melden in de chat."),
+            new RuleDef(List.of("immediate_respawn", "doImmediateRespawn"),
+                    "Meteen respawnen, zonder het scherm 'Je bent gestorven'."),
+            new RuleDef(List.of("players_sleeping_percentage", "playersSleepingPercentage"),
+                    "Hoeveel procent van de spelers moet slapen om het dag te maken."),
+            new RuleDef(List.of("random_tick_speed", "randomTickSpeed"),
+                    "Groeisnelheid van planten. Standaard 3; hoger kost prestaties."),
+            new RuleDef(List.of("respawn_radius", "spawnRadius"), "Spreiding rond het spawnpunt."),
+            new RuleDef(List.of("limited_crafting", "doLimitedCrafting"),
+                    "Alleen recepten craften die je geleerd hebt."));
+
+    /** Zoekt de regel op onder zijn nieuwe of oude naam. */
+    private static GameRule<?> resolve(RuleDef def) {
+        for (String name : def.names()) {
+            try {
+                GameRule<?> rule = GameRule.getByName(name);
+                if (rule != null) return rule;
+            } catch (RuntimeException ignored) {
+                // naam bestaat niet op deze serverversie
+            }
+        }
+        return null;
     }
 
     private final RolBeheer plugin;
@@ -220,11 +222,11 @@ public final class ServerSettings {
 
     public List<RuleInfo> rules(World world) {
         List<RuleInfo> list = new ArrayList<>();
-        for (Map.Entry<String, String[]> e : RULE_LABELS.entrySet()) {
-            GameRule<?> rule = GameRule.getByName(e.getKey());
+        for (RuleDef def : RULES) {
+            GameRule<?> rule = resolve(def);
             if (rule == null) continue;
             Object value = world.getGameRuleValue(rule);
-            list.add(new RuleInfo(e.getKey(), e.getValue()[0], e.getValue()[1],
+            list.add(new RuleInfo(rule.getName(), rule.getName(), def.description(),
                     rule.getType() == Boolean.class, String.valueOf(value)));
         }
         return list;
@@ -232,8 +234,15 @@ public final class ServerSettings {
 
     @SuppressWarnings("unchecked")
     public void setRule(World world, String key, String value) {
-        GameRule<?> rule = GameRule.getByName(key);
-        if (rule == null || !RULE_LABELS.containsKey(key)) throw new ApiException("Onbekende gameregel.");
+        GameRule<?> rule = null;
+        for (RuleDef def : RULES) {
+            GameRule<?> candidate = resolve(def);
+            if (candidate != null && candidate.getName().equalsIgnoreCase(key)) {
+                rule = candidate;
+                break;
+            }
+        }
+        if (rule == null) throw new ApiException("Onbekende gameregel.");
         if (rule.getType() == Boolean.class) {
             world.setGameRule((GameRule<Boolean>) rule, Boolean.parseBoolean(value));
         } else {

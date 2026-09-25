@@ -112,6 +112,7 @@ public final class RolBeheer extends JavaPlugin {
             }
         }
         boards.start();
+        applyMotd();
 
         RolCommand command = new RolCommand(this);
         PluginCommand pc = getCommand("rol");
@@ -188,6 +189,20 @@ public final class RolBeheer extends JavaPlugin {
     }
 
     public long startedAt() { return startedAt; }
+
+    /**
+     * Zet de MOTD uit onze eigen config. Dat gaat via de server zelf en niet via server.properties,
+     * zodat ook gradients en andere MiniMessage-opmaak werken.
+     */
+    public void applyMotd() {
+        String motd = getConfig().getString("motd", "");
+        if (motd == null || motd.isBlank()) return;
+        try {
+            getServer().motd(nl.robin.rolbeheer.util.Text.parse(motd.replace("\\n", "\n")));
+        } catch (RuntimeException e) {
+            getLogger().warning("MOTD kon niet worden toegepast: " + e.getMessage());
+        }
+    }
 
     public String displayName() {
         return getConfig().getString("weergavenaam", "The Blueprint");

@@ -4,6 +4,10 @@
 #  Na handmatig bewerken: /rol herlaad
 # ------------------------------------------------------------
 
+# De tekst in de serverlijst. Twee regels mag, gescheiden door \n.
+# Hier werkt alle opmaak: &c, <gold>, maar ook <gradient:#00d4ff:#7c4dff>.
+motd: ""
+
 # Naam die in het webpaneel bovenaan staat.
 weergavenaam: "The Blueprint"
 

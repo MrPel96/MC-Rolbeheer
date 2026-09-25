@@ -166,6 +166,32 @@ public final class WebApi {
                         + (result.spawn() ? ", spawnpunt overgenomen" : "") + ".";
                 return spelers(msg);
             }
+            case "server/motd" -> {
+                String value = str(req, "value").replace("\r", "");
+                if (value.length() > 400) throw new ApiException("Deze tekst is te lang.");
+                if (value.split("\n", -1).length > 2) throw new ApiException("De MOTD mag maximaal twee regels zijn.");
+                plugin.getConfig().set("motd", value.replace("\n", "\\n"));
+                plugin.saveConfig();
+                plugin.applyMotd();
+                log("MOTD gewijzigd");
+                return server(null);
+            }
+            case "spelers/module" -> {
+                String module = str(req, "name");
+                java.util.List<String> commands = MODULES.get(module);
+                if (commands == null) throw new ApiException("Onbekende module.");
+                boolean enable = req.has("enabled") && req.get("enabled").getAsBoolean();
+                java.util.List<String> off = new java.util.ArrayList<>(
+                        plugin.getConfig().getStringList("commands.uitgeschakeld"));
+                for (String command : commands) {
+                    off.remove(command);
+                    if (!enable) off.add(command);
+                }
+                plugin.getConfig().set("commands.uitgeschakeld", off);
+                plugin.saveConfig();
+                log("module " + module + (enable ? " aangezet" : " uitgezet"));
+                return spelers("Opgeslagen. Herstart de server om dit toe te passen.");
+            }
             case "spelers/commando" -> {
                 String name = str(req, "name").toLowerCase(Locale.ROOT);
                 if (!nl.robin.rolbeheer.spelers.PlayerCommands.COMMANDS.contains(name)) {
@@ -317,6 +343,14 @@ public final class WebApi {
         }
         o.add("properties", props);
 
+        String motd = plugin.getConfig().getString("motd", "");
+        // Nog niets ingesteld? Begin met wat er nu in server.properties staat.
+        if (motd == null || motd.isBlank()) {
+            motd = current.getOrDefault("motd", "").replace("\\n", "\n").replace('§', '&');
+        }
+        o.addProperty("motd", motd.replace("\\n", "\n"));
+        o.addProperty("motdHtml", ComponentHtml.toHtml(Text.parse(motd.replace("\\n", "\n"))));
+
         World world = settings.world(worldName);
         o.addProperty("world", world.getName());
         JsonArray worlds = new JsonArray();
@@ -358,6 +392,17 @@ public final class WebApi {
         return array;
     }
 
+    /** Welke commands bij welke module horen. */
+    static final java.util.Map<String, java.util.List<String>> MODULES = java.util.Map.of(
+            "homes", java.util.List.of("home", "sethome", "delhome", "homes"),
+            "spawn", java.util.List.of("spawn", "setspawn"),
+            "back", java.util.List.of("back"),
+            "warps", java.util.List.of("warp", "warps", "setwarp", "delwarp"),
+            "kits", java.util.List.of("kit", "kits", "setkit", "delkit"),
+            "teleport", java.util.List.of("tpa", "tpahere", "tpaccept", "tpdeny"),
+            "berichten", java.util.List.of("msg", "r"),
+            "stats", java.util.List.of("stats", "top"));
+
     private JsonObject spelers(String message) {
         JsonObject o = new JsonObject();
         o.addProperty("enabled", plugin.getConfig().getBoolean("commands.ingeschakeld", true));
@@ -376,6 +421,28 @@ public final class WebApi {
         o.addProperty("chatPrefixHtml", ComponentHtml.toHtml(Text.parse(chatPrefix)));
 
         java.util.List<String> off = plugin.getConfig().getStringList("commands.uitgeschakeld");
+
+        JsonArray modules = new JsonArray();
+        String[][] info = {
+                {"homes", "Homes", "/home, /sethome, /delhome, /homes"},
+                {"spawn", "Spawn", "/spawn, /setspawn"},
+                {"back", "Terug", "/back na teleport of dood"},
+                {"warps", "Warps", "/warp, /warps, /setwarp, /delwarp"},
+                {"kits", "Kits", "/kit, /kits, /setkit, /delkit"},
+                {"teleport", "Teleportverzoeken", "/tpa, /tpahere, /tpaccept, /tpdeny"},
+                {"berichten", "Prive-berichten", "/msg, /r"},
+                {"stats", "Statistieken", "/stats, /top"}};
+        for (String[] row : info) {
+            JsonObject j = new JsonObject();
+            j.addProperty("name", row[0]);
+            j.addProperty("label", row[1]);
+            j.addProperty("commands", row[2]);
+            boolean on = MODULES.get(row[0]).stream().noneMatch(off::contains);
+            j.addProperty("enabled", on);
+            modules.add(j);
+        }
+        o.add("modules", modules);
+
         JsonArray commands = new JsonArray();
         for (String name : nl.robin.rolbeheer.spelers.PlayerCommands.COMMANDS) {
             JsonObject j = new JsonObject();

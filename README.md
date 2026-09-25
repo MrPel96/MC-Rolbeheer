@@ -1,4 +1,4 @@
-# The Blueprint 2.0.0
+# The Blueprint 3.0.0
 
 Rollen, permissies, spelerscommands en serverbeheer voor Paper, met een webpaneel.
 
@@ -7,7 +7,7 @@ gewoon blijven werken.
 
 ## Bouwen
 **Zonder iets te installeren (GitHub):** zet deze map in een GitHub-repository. Bij elke push bouwt
-GitHub Actions de plugin. Download `TheBlueprint-2.0.0.jar` onder *Actions → laatste run → Artifacts*.
+GitHub Actions de plugin. Download `TheBlueprint-3.0.0.jar` onder *Actions → laatste run → Artifacts*.
 
 **Lokaal:** installeer JDK 21 en Maven, en voer `mvn package` uit. De jar staat in `target/`.
 Of open de map in IntelliJ IDEA en voer Maven → Lifecycle → package uit.
@@ -16,7 +16,7 @@ Serverversie anders dan 1.21.4? Pas `paper.version` aan in `pom.xml`.
 
 ## Upgraden vanaf RolBeheer
 1. Zet de server uit en verwijder de oude `RolBeheer-*.jar` uit `plugins/`.
-2. Zet `TheBlueprint-2.0.0.jar` erin en start de server.
+2. Zet `TheBlueprint-3.0.0.jar` erin en start de server.
 3. De plugin neemt bij de eerste start alles over uit `plugins/RolBeheer`: je config, rollen, spelers,
    homes, warps, kits en statistieken. In de console zie je hoeveel bestanden zijn overgenomen.
 4. Werkt alles, dan mag de map `plugins/RolBeheer` weg.
@@ -57,7 +57,8 @@ Het paneel heeft twee onderdelen, te kiezen rechtsboven:
 
 **Server** — instellingen die voorheen alleen via bestanden konden:
 - *Server*: MOTD (met kleurknoppen en een live voorbeeld), maximaal aantal spelers, moeilijkheidsgraad, PvP, spelmodus, kijkafstand, spawn-bescherming en meer. Dit past `server.properties` aan. Instellingen met het label "herstart nodig" werken pas na een herstart; de rest gaat meteen in.
-- *Gameregels*: spullen behouden na de dood, dag-nachtcyclus, mobs die blokken slopen, vuur dat zich verspreidt, en zo verder. Per wereld, en meteen actief.
+- *Gameregels* (werkt ook op Minecraft 26, waar alle regels hernoemd zijn, bijvoorbeeld `keepInventory`
+  naar `keep_inventory`): spullen behouden na de dood, dag-nachtcyclus, mobs die blokken slopen, vuur dat zich verspreidt, en zo verder. Per wereld, en meteen actief.
 - *Spelers en toegang*: witte lijst aan of uit en beheren, operators toekennen of afnemen, verbanningen opheffen en spelers van de server halen.
 
 Instellingen in `bukkit.yml`, `spigot.yml` en `paper.yml` zitten er bewust niet in. Daar staan honderden technische opties die je server ook echt kapot kunnen configureren.
@@ -131,6 +132,10 @@ Gebruik je liever EssentialsX voor deze commands? Zet dan in `config.yml` `comma
 en herstart, anders claimen twee plugins dezelfde commands.
 
 ## Updaten
+Nieuwe versie? Zet de bestanden in je GitHub-repo, wacht tot de workflow klaar is, download de jar bij
+Releases, vervang de oude jar en herstart. Je instellingen blijven staan.
+
+## Oude updateknop
 Vanaf versie 1.3.0 gaat updaten via het paneel: tabblad **Server → Updates**. Daar staat welke versie
 je draait, of er een nieuwere op GitHub staat, en een knop om die klaar te zetten. Bij de eerstvolgende
 herstart wisselt de plugin zichzelf om en verwijdert hij de oude jar.
